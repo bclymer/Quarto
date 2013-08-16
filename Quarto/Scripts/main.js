@@ -1,182 +1,352 @@
 ﻿(function (quarto, $) {
 
+    var fullRadius;
+    var smallSize = 0.18;
+    var farX = 0.8;
+    var closeX = 0.266;
+    var selectedPiece = -1;
+    var shape_circle = 1;
+    var shape_square = 2;
+    var shape_piece = 3;
+    var context;
+
+    var drawnObjects = [];
+
+    // 1: circle, 2: square, 3: piece
+    function DrawnObject(x, y, shape, size, data, onClick) {
+        this.x = x;
+        this.y = y;
+        this.shape = shape;
+        this.size = size;
+        this.data = data;
+        this.onClick = onClick;
+        if (shape == 3) {
+            this.size = data.square ? 0.22 : 0.11;
+        }
+    }
+
+    DrawnObject.prototype.getRelativeCoordinates = function () {
+        return [this.x, this.y];
+    }
+
+    DrawnObject.prototype.getAbsoluteCoordinates = function () {
+        return [context.canvas.width / 2 + (fullRadius * this.x), context.canvas.height / 2 + (fullRadius * this.y)]
+    }
+
+    DrawnObject.prototype.containsPoint = function (x, y) {
+        var coordinates = this.getAbsoluteCoordinates();
+        var size = this.size;
+        if (this.shape == 1) {
+            return inCircle();
+        } else if (this.shape == 2) {
+            return inSquare();
+        } else if (this.shape == 3) {
+            if (this.data.square) {
+                return inSquare();
+            } else {
+                return inCircle();
+            }
+        }
+        return false;
+
+        function inCircle() {
+            return (x > coordinates[0] - size * fullRadius &&
+                x < coordinates[0] + size * fullRadius &&
+                y > coordinates[1] - size * fullRadius &&
+                y < coordinates[1] + size * fullRadius &&
+                Math.sqrt(Math.pow(x - coordinates[0], 2) + Math.pow(y - coordinates[1], 2)) < size * fullRadius);
+        }
+
+        function inSquare() {
+            return (x > coordinates[0] - size * fullRadius / 2 &&
+                x < coordinates[0] + size * fullRadius / 2 &&
+                y > coordinates[1] - size * fullRadius / 2 &&
+                y < coordinates[1] + size * fullRadius / 2);
+        }
+    }
+
+    DrawnObject.prototype.draw = function () {
+        if (this.shape == 1) {
+            drawCircle(this.x, this.y, this.size);
+        } else if (this.shape == 2) {
+            drawSquare(this.x, this.y, this.size);
+        } else if (this.shape == 3) {
+            drawPiece([this.x, this.y], this.data.square, this.data.hole, this.data.white, this.data.tall);
+        }
+    }
+
+    function resetState() {
+        usedPieces = [];
+        drawnObjects = [];
+
+        drawnObjects[0] = new DrawnObject(0.3, 0, shape_circle, 1);
+        for (var i = 0; i < 16; i++) {
+            var coordinates = getLocationXandY(i);
+            drawnObjects[i + 1] = new DrawnObject(coordinates[0], coordinates[1], shape_circle, smallSize, i,
+                function (object) {
+                    if (selectedPiece != -1) {
+                        var piece;
+                        for (var i = 0; i < drawnObjects.length; i++) {
+                            if (drawnObjects[i].shape == 3 && drawnObjects[i].data.pieceId == selectedPiece) {
+                                piece = drawnObjects[i];
+                                break;
+                            }
+                        }
+                        var selectedCoordinates = getLocationXandY(object.data);
+                        piece.x = selectedCoordinates[0];
+                        piece.y = selectedCoordinates[1];
+                        boardLocations[object.data] = selectedPiece;
+                        usedPieces[usedPieces.length] = selectedPiece;
+                        selectedPiece = -1;
+                        draw();
+                        checkForWinner();
+                    }
+                });
+        }
+
+        var x = -1.1, y = -0.87, z = 0;
+        for (var i = 0; i < availablePieces.length; i++) {
+            var pieceId = availablePieces[i];
+            var piece = possiblePieces[pieceId];
+            drawnObjects[drawnObjects.length] = new DrawnObject(
+                x, y, shape_piece, -1 /* overwritten */,
+                {
+                    square: piece.square,
+                    hole: piece.hole,
+                    white: piece.white,
+                    tall: piece.tall,
+                    pieceId: pieceId
+                },
+                function (object) {
+                    if (selectedPiece == -1 && usedPieces.indexOf(object.data.pieceId) == -1) {
+                        selectedPiece = object.data.pieceId;
+                        var selectedCoordinates = getLocationXandY(16);
+                        object.x = selectedCoordinates[0];
+                        object.y = selectedCoordinates[1];
+                        draw();
+                    }
+                }
+            );
+
+            y += 0.25;
+            if (++z == 8) {
+                x += 0.25;
+                y = -0.87;
+            }
+        }
+    }
+
     $(function () {
         var canvasElement = $("<canvas />");
-        var fullRadius;
-        var smallSize = 0.18;
-        var farX = 0.8;
-        var closeX = 0.266;
-        var context = canvasElement.get(0).getContext("2d");
-        var selectedPiece = -1;
+        context = canvasElement.get(0).getContext("2d");
         $('body').append(canvasElement);
         context.canvas.addEventListener("mousedown", mouseClick, false);
+
+        resetState();
+
+        context.canvas.width = window.innerWidth;
+        context.canvas.height = window.innerHeight;
         draw();
 
         $('body').on("com.bclymer.quarto.userChosePiece", function (event, pieceId) {
             var piece = possiblePieces[pieceId];
-            drawPiece(16, piece.square, piece.hole, piece.white, piece.tall);
+            drawPiece(getLocationXandY(16), piece.square, piece.hole, piece.white, piece.tall);
             selectedPiece = pieceId;
         });
 
         function mouseClick(event) {
-            var x = ((event.x / context.canvas.width) - 0.5) * (context.canvas.width / fullRadius);
-            var y = ((event.y / context.canvas.height) - 0.5) * (context.canvas.height / fullRadius);
-            if (selectedPiece != -1) {
-                for (var i = 0; i < 16; i++) {
-                    var coordinates = getLocationXandY(i);
-                    if (x > coordinates[0] - smallSize &&
-                        x < coordinates[0] + smallSize &&
-                        y > coordinates[1] - smallSize &&
-                        y < coordinates[1] + smallSize &&
-                        Math.sqrt(Math.pow(x - coordinates[0], 2) + Math.pow(y - coordinates[1], 2)) < smallSize) {
-                        context.beginPath();
-                        context.lineWidth = fullRadius / 95.5;
-                        context.strokeStyle = '#003300';
-                        var piece = possiblePieces[selectedPiece];
-                        boardLocations[i] = selectedPiece;
-                        drawPiece(i, piece.square, piece.hole, piece.white, piece.tall);
-                        var clearArea = getLocationXandY(16);
-
-                        var adjustedX = context.canvas.width / 2 + (fullRadius * (clearArea[0] - 0.01));
-                        var adjustedY = context.canvas.height / 2 + (fullRadius * (clearArea[1] - 0.01));
-                        var clearSize = 0.29;
-                        var fullSize = clearSize * fullRadius;
-                        context.clearRect(adjustedX - fullSize / 2, adjustedY - fullSize / 2, clearSize * fullRadius, clearSize * fullRadius);
+            for (var i = 0; i < drawnObjects.length; i++) {
+                var object = drawnObjects[i];
+                if (object.containsPoint(event.x, event.y)) {
+                    if (object.onClick) {
+                        object.onClick(object);
                     }
                 }
             }
         }
+    });
 
-        $(window).resize(function () {
-            draw();
-        });
+    $(window).resize(function () {
+        context.canvas.width = window.innerWidth;
+        context.canvas.height = window.innerHeight;
+        draw();
+    });
 
-        function draw() {
-            context.lineWidth = 5;
-            context.strokeStyle = '#003300';
-            context.canvas.width = window.innerWidth;
-            context.canvas.height = window.innerHeight;
-            context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-            context.fillText(context.canvas.width + "," + context.canvas.height, context.canvas.width - 45, context.canvas.height - 1);
-            fullRadius = Math.min(context.canvas.height / 2, context.canvas.width / 2);
+    function draw() {
+        context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+        fullRadius = Math.min(context.canvas.width / 2, context.canvas.height / 2);
 
+        context.beginPath();
+        context.lineWidth = fullRadius / 95.5;
+        context.strokeStyle = '#003300';
+
+        for (var i = 0; i < drawnObjects.length; i++) {
             context.beginPath();
-            context.lineWidth = fullRadius / 95.5;
-            context.strokeStyle = '#003300';
-            drawCircle(0, 0, 1);
-            for (var i = 0; i < 16; i++) {
-                var coordinates = getLocationXandY(i);
-                drawCircle(coordinates[0], coordinates[1], smallSize);
-            }
-            var pieceId = selectedPiece;
+            drawnObjects[i].draw();
             context.stroke();
-            for (var i = 0; i < 16; i++) {
-                if (boardLocations[i] != -1) {
-                    var piece = possiblePieces[boardLocations[i]];
-                    drawPiece(i, piece.square, piece.hole, piece.white, piece.tall);
+        }
+
+        context.stroke();
+    }
+
+    function checkForWinner() {
+        if (checkSequence(function (i, j) { return i * 4 + j; })) {
+            return;
+        }
+
+        if (checkSequence(function (i, j) { return j * 4 + i; })) {
+            return;
+        }
+
+        { // limit scope
+            var square = 10, hole = 10, white = 10, tall = 10;
+            for (var j = 0; j < 16; j += 5) {
+                var pieceId = boardLocations[j];
+                if (pieceId == -1) {
+                    square = 0, hole = 0, white = 0, tall = 0;
+                    break;
+                }
+                var piece = possiblePieces[pieceId];
+                square += piece.square;
+                hole += piece.hole;
+                white += piece.white;
+                tall += piece.tall;
+            }
+            if (checkValues(square, hole, white, tall)) {
+                return;
+            }
+        }
+
+        { // limit scope
+            var square = 10, hole = 10, white = 10, tall = 10;
+            for (var j = 0; j < 5; j++) {
+                var pieceId = boardLocations[j];
+                if (pieceId == -1) {
+                    square = 0, hole = 0, white = 0, tall = 0;
+                    break;
+                }
+                var piece = possiblePieces[pieceId];
+                square += piece.square;
+                hole += piece.hole;
+                white += piece.white;
+                tall += piece.tall;
+            }
+            if (checkValues(square, hole, white, tall)) {
+                return;
+            }
+        }
+
+        function checkSequence(locationFunction) {
+            for (var i = 0; i < 4; i++) {
+                var square = 10, hole = 10, white = 10, tall = 10;
+                for (var j = 0; j < 4; j++) {
+                    var pieceId = boardLocations[locationFunction(i, j)];
+                    if (pieceId == -1) {
+                        square = 0, hole = 0, white = 0, tall = 0;
+                        break;
+                    }
+                    var piece = possiblePieces[pieceId];
+                    square += piece.square;
+                    hole += piece.hole;
+                    white += piece.white;
+                    tall += piece.tall;
+                }
+                if (checkValues(square, hole, white, tall)) {
+                    return true;
                 }
             }
-            if (pieceId >= 0) {
-                var piece = possiblePieces[pieceId];
-                drawPiece(16, piece.square, piece.hole, piece.white, piece.tall);
-            }
-            selectedPiece = pieceId;
+            return false;
         }
 
-        function drawCircle(x, y, size) {
-            var radius = Math.min(context.canvas.height / 2 * size, context.canvas.width / 2 * size);
-            var adjustedX = context.canvas.width / 2 + (fullRadius * x);
-            var adjustedY = context.canvas.height / 2 + (fullRadius * y);
-            context.moveTo(adjustedX + radius, adjustedY);
-            context.arc(adjustedX, adjustedY, radius, 0, 2 * Math.PI, false);
+        function checkValues(square, hole, white, tall) {
+            if (isFourOrZero(square) || isFourOrZero(hole) || isFourOrZero(white) || isFourOrZero(tall)) {
+                alert("Winner");
+                resetState();
+                return true;
+            }
+            return false;
         }
+    }
 
-        function drawSquare(x, y, size) {
-            var adjustedX = context.canvas.width / 2 + (fullRadius * x);
-            var adjustedY = context.canvas.height / 2 + (fullRadius * y);
-            var fullSize = size * fullRadius;
-            context.rect(adjustedX - fullSize / 2, adjustedY - fullSize / 2, fullSize, fullSize);
+    function isFourOrZero(num) {
+        return num == 10 || num == 14;
+    }
+
+    function getLocationXandY(location) {
+        var loc = privateGetLocationXandY(location);
+        return [loc[0] + 0.3, loc[1]];
+    }
+
+    function privateGetLocationXandY(location) {
+        switch (location) {
+            case 0:
+                return [0, -farX];
+            case 1:
+                return [closeX, -farX + closeX];
+            case 2:
+                return [farX - closeX, -closeX];
+            case 3:
+                return [farX, 0];
+            case 4:
+                return [-closeX, -farX + closeX];
+            case 5:
+                return [0, -closeX];
+            case 6:
+                return [closeX, 0];
+            case 7:
+                return [farX - closeX, closeX];
+            case 8:
+                return [-farX + closeX, -closeX];
+            case 9:
+                return [-closeX, 0];
+            case 10:
+                return [0, closeX];
+            case 11:
+                return [closeX, farX - closeX];
+            case 12:
+                return [-farX, 0];
+            case 13:
+                return [-farX + closeX, closeX];
+            case 14:
+                return [-closeX, farX - closeX];
+            case 15:
+                return [0, farX];
+            case 16:
+                return [-0.85, -0.85];
         }
+    }
 
-        function drawPiece(location, square, hole, white, tall) {
-            context.beginPath();
-            context.lineWidth = fullRadius / 95.5;
-            if (tall) {
-                context.lineWidth *= 2;
-            }
-            context.strokeStyle = white ? '#00BB00' : '#002200';
-            var coordinates = getLocationXandY(location);
-            if (square) {
-                drawSquare(coordinates[0], coordinates[1], 0.2);
-            } else {
-                drawCircle(coordinates[0], coordinates[1], 0.12);
-            }
-            if (hole) {
-                drawCircle(coordinates[0], coordinates[1], 0.08);
-            }
-            if (!white) {
+    function drawCircle(x, y, size) {
+        var radius = fullRadius * size;
+        var adjustedX = context.canvas.width / 2 + (fullRadius * x);
+        var adjustedY = context.canvas.height / 2 + (fullRadius * y);
+        context.moveTo(adjustedX + radius, adjustedY);
+        context.arc(adjustedX, adjustedY, radius, 0, 2 * Math.PI, false);
+    }
 
-            }
-            context.stroke();
-            selectedPiece = -1;
+    function drawSquare(x, y, size) {
+        var adjustedX = context.canvas.width / 2 + (fullRadius * x);
+        var adjustedY = context.canvas.height / 2 + (fullRadius * y);
+        var fullSize = size * fullRadius;
+        context.moveTo(adjustedX + fullSize / 2, adjustedY);
+        context.rect(adjustedX - fullSize / 2, adjustedY - fullSize / 2, fullSize, fullSize);
+    }
+
+    function drawPiece(location, square, hole, white, tall) {
+        context.lineWidth = fullRadius / 95.5;
+        if (tall) {
+            context.lineWidth *= 2;
         }
-
-        function getLocationXandY(location) {
-            switch (location) {
-                case 0:
-                    return [0, -farX];
-                    break;
-                case 1:
-                    return [-closeX, -farX + closeX];
-                    break;
-                case 2:
-                    return [closeX, -farX + closeX];
-                    break;
-                case 3:
-                    return [-farX + closeX, -closeX];
-                    break;
-                case 4:
-                    return [0, -closeX];
-                    break;
-                case 5:
-                    return [farX - closeX, -closeX];
-                    break;
-                case 6:
-                    return [-farX, 0];
-                    break;
-                case 7:
-                    return [-closeX, 0];
-                    break;
-                case 8:
-                    return [closeX, 0];
-                    break;
-                case 9:
-                    return [farX, 0];
-                    break;
-                case 10:
-                    return [-farX + closeX, closeX];
-                    break;
-                case 11:
-                    return [0, closeX];
-                    break;
-                case 12:
-                    return [farX - closeX, closeX];
-                    break;
-                case 13:
-                    return [-closeX, farX - closeX];
-                    break;
-                case 14:
-                    return [closeX, farX - closeX];
-                    break;
-                case 15:
-                    return [0, farX];
-                    break;
-                case 16:
-                    return [-0.85, -0.85];
-                    break;
-            }
+        context.strokeStyle = white ? '#00BB00' : '#002200';
+        if (square) {
+            drawSquare(location[0], location[1], 0.22);
+        } else {
+            drawCircle(location[0], location[1], 0.11);
         }
-    });
+        if (hole) {
+            drawCircle(location[0], location[1], 0.08);
+        }
+    }
 
     var possiblePieces = [
         {square: true, hole: true, white: true, tall: true},
