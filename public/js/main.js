@@ -101,6 +101,22 @@
         locationChosen(data.location);
     });
 
+    $(document).on("chat", function (event, data) {
+        $('#chat-div').append("Opponent: " + data.message + "<br />");
+    });
+
+    $(document).ready(function () {
+        $('#send').click(function () {
+            socket.send(JSON.stringify({
+                action: "chat",
+                message: $('#chat').val(),
+                ToUuid: opponent
+            }));
+            $('#chat-div').append("You: " + $('#chat').val() + "<br />");
+            $('#chat').val("");
+        });
+    });
+
     var drawnObjects = [];
 
     // 1: circle, 2: square, 3: piece
@@ -252,9 +268,8 @@
     }
 
     $(function () {
-        var canvasElement = $("<canvas />");
+        var canvasElement = $("#canvas");
         context = canvasElement.get(0).getContext("2d");
-        $('body').append(canvasElement);
         context.canvas.addEventListener("mousedown", mouseClick, false);
 
         resetState();
@@ -312,7 +327,7 @@
                 text = "waiting for play";
                 break;
         }
-        context.fillText("GameState: " + text, 2, 10);
+        context.fillText("GameState: " + text, context.canvas.width - 150, context.canvas.height - 2);
     }
 
     function checkForWinner() {

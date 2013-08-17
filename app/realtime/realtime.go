@@ -69,6 +69,7 @@ func realtime() {
 			subscribers.PushBack(subscriber)
 			ch <- Subscription{subscriber, ""}
 		case event := <-publish:
+			// TODO: only send to channel of intended client, interating through sucks
 			for ch := subscribers.Front(); ch != nil; ch = ch.Next() {
 				ch.Value.(chan Event) <- event
 			}
