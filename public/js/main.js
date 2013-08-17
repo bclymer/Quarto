@@ -5,10 +5,98 @@
     var farX = 0.8;
     var closeX = 0.266;
     var selectedPiece = -1;
+    var context;
+    var gameState = 0;
+
+    var game_state_no_player = 0;
+    var game_state_waiting_for_piece = 1;
+    var game_state_playing_piece = 2;
+    var game_state_choosing_piece = 3;
+    var game_state_waiting_for_play = 4;
+
     var shape_circle = 1;
     var shape_square = 2;
     var shape_piece = 3;
-    var context;
+
+    var uuid = generateUUID();
+    var opponent;
+
+    function generateUUID() {
+        var d = new Date().getTime();
+        var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = (d + Math.random() * 16) % 16 | 0;
+            d = Math.floor(d / 16);
+            return (c == 'x' ? r : (r & 0x7 | 0x8)).toString(16);
+        });
+        return uuid;
+    };;
+
+    var socket = new WebSocket('ws://' + window.location.host + '/realtime?uuid=' + uuid);
+
+    socket.onmessage = function (event) {
+        var message = JSON.parse(event.data);
+        if (message.Uuid == uuid) {
+            console.log("Rejecting own message, server should do this for me!");
+            return;
+        }
+        console.log("Raw log -- " + event.data);
+
+        if (message.Action == "action") {
+            data = JSON.parse(message.Data);
+            data.Uuid = message.Uuid;
+            $(document).trigger(data.action, data);
+        } else {
+            $(document).trigger(message.Action, message);
+        }
+    };
+
+    $(document).on("joined", function (event, data) {
+        socket.send(JSON.stringify({
+            action: "accept",
+            myUuid: uuid,
+            yourUuid: data.Uuid
+        }));
+        gameState = game_state_waiting_for_piece;
+        console.log("send: accepted partner");
+        resetState();
+        draw();
+    });
+
+    $(document).on("accept", function (event, data) {
+        opponent = data.myUuid;
+        console.log("accpeted partner: " + opponent);
+        gameState = game_state_choosing_piece;
+        resetState();
+        draw();
+    });
+
+    $(document).on("left", function (event, data) {
+        console.log("player left");
+        opponent = undefined;
+        gameState = game_state_no_player;
+        draw();
+    });
+
+    $(document).on("chosen", function (event, data) {
+        var pieceId = parseInt(data.pieceId);
+        selectedPiece = pieceId;
+
+        var piece;
+        for (var i = 0; i < drawnObjects.length; i++) {
+            if (drawnObjects[i].shape == 3 && drawnObjects[i].data.pieceId == pieceId) {
+                piece = drawnObjects[i];
+                break;
+            }
+        }
+
+        gameState = game_state_playing_piece;
+        pieceChosen(piece);
+    });
+
+    $(document).on("placed", function (event, data) {
+        gameState = game_state_waiting_for_piece;
+        locationChosen(data.location);
+    });
 
     var drawnObjects = [];
 
@@ -75,31 +163,48 @@
         }
     }
 
+    function locationChosen(location) {
+        var piece;
+        for (var i = 0; i < drawnObjects.length; i++) {
+            if (drawnObjects[i].shape == 3 && drawnObjects[i].data.pieceId == selectedPiece) {
+                piece = drawnObjects[i];
+                break;
+            }
+        }
+        var selectedCoordinates = getLocationXandY(location);
+        piece.x = selectedCoordinates[0];
+        piece.y = selectedCoordinates[1];
+        boardLocations[location] = selectedPiece;
+        usedPieces[usedPieces.length] = selectedPiece;
+        selectedPiece = -1;
+        draw();
+        checkForWinner();
+    }
+
+    function pieceChosen(piece) {
+        var selectedCoordinates = getLocationXandY(16);
+        piece.x = selectedCoordinates[0];
+        piece.y = selectedCoordinates[1];
+        draw();
+    }
+
     function resetState() {
         usedPieces = [];
         drawnObjects = [];
+		boardLocations = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
 
         drawnObjects[0] = new DrawnObject(0.3, 0, shape_circle, 1);
         for (var i = 0; i < 16; i++) {
             var coordinates = getLocationXandY(i);
             drawnObjects[i + 1] = new DrawnObject(coordinates[0], coordinates[1], shape_circle, smallSize, i,
                 function (object) {
-                    if (selectedPiece != -1) {
-                        var piece;
-                        for (var i = 0; i < drawnObjects.length; i++) {
-                            if (drawnObjects[i].shape == 3 && drawnObjects[i].data.pieceId == selectedPiece) {
-                                piece = drawnObjects[i];
-                                break;
-                            }
-                        }
-                        var selectedCoordinates = getLocationXandY(object.data);
-                        piece.x = selectedCoordinates[0];
-                        piece.y = selectedCoordinates[1];
-                        boardLocations[object.data] = selectedPiece;
-                        usedPieces[usedPieces.length] = selectedPiece;
-                        selectedPiece = -1;
-                        draw();
-                        checkForWinner();
+                    if (gameState == game_state_playing_piece) {
+                        gameState = game_state_choosing_piece;
+                        locationChosen(object.data);
+                        socket.send(JSON.stringify({
+                            action: "placed",
+                            location: object.data
+                        }));
                     }
                 });
         }
@@ -118,12 +223,17 @@
                     pieceId: pieceId
                 },
                 function (object) {
-                    if (selectedPiece == -1 && usedPieces.indexOf(object.data.pieceId) == -1) {
-                        selectedPiece = object.data.pieceId;
-                        var selectedCoordinates = getLocationXandY(16);
-                        object.x = selectedCoordinates[0];
-                        object.y = selectedCoordinates[1];
-                        draw();
+                    if (gameState == game_state_choosing_piece) {
+                        if (selectedPiece == -1 && usedPieces.indexOf(object.data.pieceId) == -1) {
+                            gameState = game_state_waiting_for_play;
+                            pieceChosen(object);
+                            selectedPiece = object.data.pieceId;
+                            console.log("send: " + selectedPiece);
+                            socket.send(JSON.stringify({
+                                action: "chosen",
+                                pieceId: selectedPiece
+                            }));
+                        }
                     }
                 }
             );
@@ -148,12 +258,6 @@
         context.canvas.height = window.innerHeight;
         draw();
 
-        $('body').on("com.bclymer.quarto.userChosePiece", function (event, pieceId) {
-            var piece = possiblePieces[pieceId];
-            drawPiece(getLocationXandY(16), piece.square, piece.hole, piece.white, piece.tall);
-            selectedPiece = pieceId;
-        });
-
         function mouseClick(event) {
             for (var i = 0; i < drawnObjects.length; i++) {
                 var object = drawnObjects[i];
@@ -176,7 +280,6 @@
         context.clearRect(0, 0, context.canvas.width, context.canvas.height);
         fullRadius = Math.min(context.canvas.width / 2, context.canvas.height / 2);
 
-        context.beginPath();
         context.lineWidth = fullRadius / 95.5;
         context.strokeStyle = '#003300';
 
@@ -186,7 +289,25 @@
             context.stroke();
         }
 
-        context.stroke();
+        var text;
+        switch (gameState) {
+            case game_state_no_player:
+                text = "no player";
+                break;
+            case game_state_choosing_piece:
+                text = "choosing piece";
+                break;
+            case game_state_playing_piece:
+                text = "playing piece";
+                break;
+            case game_state_waiting_for_piece:
+                text = "waiting for piece";
+                break;
+            case game_state_waiting_for_play:
+                text = "waiting for play";
+                break;
+        }
+        context.fillText("GameState: " + text, 2, 10);
     }
 
     function checkForWinner() {
@@ -262,6 +383,7 @@
             if (isFourOrZero(square) || isFourOrZero(hole) || isFourOrZero(white) || isFourOrZero(tall)) {
                 alert("Winner");
                 resetState();
+				draw();
                 return true;
             }
             return false;
