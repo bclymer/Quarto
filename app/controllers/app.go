@@ -1,15 +1,18 @@
 package controllers
 
-import "github.com/robfig/revel"
-import "code.google.com/p/go.net/websocket"
-import "quarto/app/realtime"
+import (
+	"github.com/robfig/revel"
+	"code.google.com/p/go.net/websocket"
+	"quarto/app/realtime"
+	"encoding/json"
+)
 
 type App struct {
 	*revel.Controller
 }
 
-type TestDesc struct {
-	PieceId int
+type MessageToWhom struct {
+	ToUuid	string
 }
 
 func (c App) Index() revel.Result {
@@ -19,6 +22,7 @@ func (c App) Index() revel.Result {
 func (c App) Realtime(uuid string, ws *websocket.Conn) revel.Result {
 
 	subscription := realtime.Subscribe()
+	subscription.Uuid = uuid;
 	defer subscription.Cancel()
 
 	realtime.Join(uuid)
@@ -40,9 +44,13 @@ func (c App) Realtime(uuid string, ws *websocket.Conn) revel.Result {
 	for {
 		select {
 		case event := <-subscription.New:
-			if websocket.JSON.Send(ws, &event) != nil {
-				// They disconnected.
-				return nil
+			revel.INFO.Printf("Sending message from %s", subscription.Uuid);
+			revel.INFO.Printf("Sending %s", event.Action);
+			if (event.ToUuid == subscription.Uuid || event.ToUuid == "") {
+				if websocket.JSON.Send(ws, &event) != nil {
+					// They disconnected.
+					return nil
+				}
 			}
 		case msg, ok := <-newMessages:
 			// If the channel is closed, they disconnected.
@@ -50,8 +58,11 @@ func (c App) Realtime(uuid string, ws *websocket.Conn) revel.Result {
 				return nil
 			}
 
-			// Otherwise, say something.
-			realtime.Action("action", msg, uuid)
+			var m MessageToWhom
+			b := []byte(msg)
+			json.Unmarshal(b, &m)
+
+			realtime.Action("action", msg, uuid, m.ToUuid)
 		}
 	}
 

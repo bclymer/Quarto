@@ -39,7 +39,6 @@
             console.log("Rejecting message, not opponent.");
             return;
         }
-        console.log("Raw log -- " + event.data);
 
         if (message.Action == "action") {
             data = JSON.parse(message.Data);
@@ -51,12 +50,12 @@
     };
 
     $(document).on("joined", function (event, data) {
+        opponent = data.Uuid;
         socket.send(JSON.stringify({
             action: "accept",
             myUuid: uuid,
-            yourUuid: data.Uuid
+            ToUuid: opponent
         }));
-        opponent = data.Uuid;
         gameState = game_state_waiting_for_piece;
         console.log("send: accepted partner");
         resetState();
@@ -207,7 +206,8 @@
                         locationChosen(object.data);
                         socket.send(JSON.stringify({
                             action: "placed",
-                            location: object.data
+                            location: object.data,
+                            ToUuid: opponent
                         }));
                     }
                 });
@@ -235,7 +235,8 @@
                             console.log("send: " + selectedPiece);
                             socket.send(JSON.stringify({
                                 action: "chosen",
-                                pieceId: selectedPiece
+                                pieceId: selectedPiece,
+                                ToUuid: opponent
                             }));
                         }
                     }

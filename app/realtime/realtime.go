@@ -2,16 +2,19 @@
 
 import (
 	"container/list"
+	"github.com/robfig/revel"
 )
 
 type Event struct {
 	Action		string // "joined", "left", or "action"
 	Data		string
 	Uuid		string
+	ToUuid		string
 }
 
 type Subscription struct {
 	New     <-chan Event // New events coming in.
+	Uuid	string
 }
 
 // Owner of a subscription must cancel it when they stop listening to events.
@@ -20,26 +23,27 @@ func (s Subscription) Cancel() {
 	drain(s.New)         // Drain it, just in case there was a pending publish.
 }
 
-func newEvent(action string, data string, uuid string) Event {
-	return Event{action, data, uuid}
+func newEvent(action string, data string, uuid string, toUuid string) Event {
+	return Event{action, data, uuid, toUuid}
 }
 
 func Subscribe() Subscription {
 	resp := make(chan Subscription)
 	subscribe <- resp
+	revel.INFO.Printf("resp ", resp)
 	return <-resp
 }
 
 func Join(uuid string) {
-	publish <- newEvent("joined", "", uuid)
+	publish <- newEvent("joined", "", uuid, "")
 }
 
-func Action(action string, data string, uuid string) {
-	publish <- newEvent(action, data, uuid)
+func Action(action string, data string, uuid string, toUuid string) {
+	publish <- newEvent(action, data, uuid, toUuid)
 }
 
 func Leave(uuid string) {
-	publish <- newEvent("left", "", uuid)
+	publish <- newEvent("left", "", uuid, "")
 }
 
 const archiveSize = 10
@@ -57,15 +61,13 @@ var (
 // This function loops forever, handling the chat room pubsub
 func realtime() {
 	subscribers := list.New()
-	//var subscriberMap map[string]Subscription
-	//subscriberMap = make(map[string]Subscription)
 
 	for {
 		select {
 		case ch := <-subscribe:
 			subscriber := make(chan Event, 10)
 			subscribers.PushBack(subscriber)
-			ch <- Subscription{subscriber}
+			ch <- Subscription{subscriber, ""}
 		case event := <-publish:
 			for ch := subscribers.Front(); ch != nil; ch = ch.Next() {
 				ch.Value.(chan Event) <- event
