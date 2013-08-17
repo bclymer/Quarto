@@ -35,8 +35,8 @@
 
     socket.onmessage = function (event) {
         var message = JSON.parse(event.data);
-        if (message.Uuid == uuid) {
-            console.log("Rejecting own message, server should do this for me!");
+        if (message.Uuid == uuid || (message.Uuid != opponent && opponent)) {
+            console.log("Rejecting message, not opponent.");
             return;
         }
         console.log("Raw log -- " + event.data);
@@ -56,6 +56,7 @@
             myUuid: uuid,
             yourUuid: data.Uuid
         }));
+        opponent = data.Uuid;
         gameState = game_state_waiting_for_piece;
         console.log("send: accepted partner");
         resetState();
@@ -74,10 +75,12 @@
         console.log("player left");
         opponent = undefined;
         gameState = game_state_no_player;
+        resetState();
         draw();
     });
 
     $(document).on("chosen", function (event, data) {
+        if (!opponent) return;
         var pieceId = parseInt(data.pieceId);
         selectedPiece = pieceId;
 
@@ -94,6 +97,7 @@
     });
 
     $(document).on("placed", function (event, data) {
+        if (!opponent) return;
         gameState = game_state_waiting_for_piece;
         locationChosen(data.location);
     });

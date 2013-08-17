@@ -11,7 +11,6 @@ type Event struct {
 }
 
 type Subscription struct {
-	Archive []Event      // All the events from the archive.
 	New     <-chan Event // New events coming in.
 }
 
@@ -57,25 +56,20 @@ var (
 
 // This function loops forever, handling the chat room pubsub
 func realtime() {
-	archive := list.New()
 	subscribers := list.New()
+	//var subscriberMap map[string]Subscription
+	//subscriberMap = make(map[string]Subscription)
 
 	for {
 		select {
 		case ch := <-subscribe:
-			var events []Event
 			subscriber := make(chan Event, 10)
 			subscribers.PushBack(subscriber)
-			ch <- Subscription{events, subscriber}
+			ch <- Subscription{subscriber}
 		case event := <-publish:
 			for ch := subscribers.Front(); ch != nil; ch = ch.Next() {
 				ch.Value.(chan Event) <- event
 			}
-			if archive.Len() >= archiveSize {
-				archive.Remove(archive.Front())
-			}
-			archive.PushBack(event)
-
 		case unsub := <-unsubscribe:
 			for ch := subscribers.Front(); ch != nil; ch = ch.Next() {
 				if ch.Value.(chan Event) == unsub {

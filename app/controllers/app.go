@@ -24,13 +24,6 @@ func (c App) Realtime(uuid string, ws *websocket.Conn) revel.Result {
 	realtime.Join(uuid)
 	defer realtime.Leave(uuid)
 
-	for _, event := range subscription.Archive {
-		if websocket.JSON.Send(ws, &event) != nil {
-			// They disconnected
-			return nil
-		}
-	}
-
 	newMessages := make(chan string)
 	go func() {
 		var msg string
