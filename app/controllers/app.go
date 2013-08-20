@@ -21,7 +21,7 @@ func (c App) Index() revel.Result {
 
 func (c App) Realtime(uuid string, ws *websocket.Conn) revel.Result {
 
-	subscription := realtime.Subscribe()
+	subscription := realtime.Subscribe(uuid)
 	subscription.Uuid = uuid;
 	defer subscription.Cancel()
 
@@ -44,13 +44,9 @@ func (c App) Realtime(uuid string, ws *websocket.Conn) revel.Result {
 	for {
 		select {
 		case event := <-subscription.New:
-			revel.INFO.Printf("Sending message from %s", subscription.Uuid);
-			revel.INFO.Printf("Sending %s", event.Action);
-			if (event.ToUuid == subscription.Uuid || event.ToUuid == "") {
-				if websocket.JSON.Send(ws, &event) != nil {
-					// They disconnected.
-					return nil
-				}
+			if websocket.JSON.Send(ws, &event) != nil {
+				// They disconnected.
+				return nil
 			}
 		case msg, ok := <-newMessages:
 			// If the channel is closed, they disconnected.
