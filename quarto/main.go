@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
     "net/http"
     "html/template"
     "io/ioutil"
@@ -16,6 +17,10 @@ type Page struct {
 
 type MessageToWhom struct {
 	ToUuid	string
+}
+
+type Success struct {
+	Valid	bool
 }
 
 func realtimeHost(ws *websocket.Conn) {
@@ -67,16 +72,26 @@ func realtimeHost(ws *websocket.Conn) {
 func handler(w http.ResponseWriter, r *http.Request) {
     title := "Quarto Online!"
     p := loadPage(title)
-    t, _ := template.ParseFiles("../index.html")
+    t, _ := template.ParseFiles("../views/index.html")
     w.Header().Set("Content-Type", "text/html")
     t.Execute(w, p)
 }
 
+func validateUsername(w http.ResponseWriter, r *http.Request) {
+	valid := realtime.ValidateUsername(r.FormValue("uuid"))
+	test := Success{valid}
+	response, _ := json.Marshal(test)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(response))
+}
+
 func main() {
     http.HandleFunc("/", handler)
+    http.HandleFunc("/validate", validateUsername)
     http.Handle("/realtime", websocket.Handler(realtimeHost))
     http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("../js"))))
     http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("../css"))))
+    http.Handle("/views/", http.StripPrefix("/views/", http.FileServer(http.Dir("../views"))))
     http.ListenAndServe(":8080", nil)
 }
 
