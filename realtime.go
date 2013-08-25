@@ -1,7 +1,7 @@
-﻿package realtime
+package main
 
 import (
-	"container/list"
+    "container/list"
 )
 
 type Event struct {

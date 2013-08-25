@@ -5,6 +5,7 @@
     var farX = 0.8;
     var closeX = 0.266;
     var selectedPiece = -1;
+    var leftShift = 0.5;
     var context;
     var gameState = 0;
 
@@ -17,6 +18,8 @@
     var shape_circle = 1;
     var shape_square = 2;
     var shape_piece = 3;
+
+    var chatTemplate = '<div class="message-container {2}"><span class="sender">{0}</span><span class="message"> - {1}</span></div>';
 
     var uuid = generateUUID();
     var opponent;
@@ -48,6 +51,10 @@
             $(document).trigger(message.Action, message);
         }
     };
+
+    $(document).on("keydown", function (event) {
+        $("#chat").focus();
+    });
 
     $(document).on("joined", function (event, data) {
         opponent = data.Uuid;
@@ -102,18 +109,41 @@
     });
 
     $(document).on("chat", function (event, data) {
-        $('#chat-div').append("Opponent: " + data.message + "<br />");
+        $('#chat-div').append(chatTemplate.replace("{0}", "Opponent").replace("{1}", data.message).replace("{2}", "opponent"));
+        scrollChatToBottom();
     });
 
+    function scrollChatToBottom() {
+        var chatDiv = document.getElementById("chat-div");
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+    }
+
     $(document).ready(function () {
+        var chatInput = $('#chat');
+
         $('#send').click(function () {
             socket.send(JSON.stringify({
                 action: "chat",
-                message: $('#chat').val(),
+                message: chatInput.val(),
                 ToUuid: opponent
             }));
-            $('#chat-div').append("You: " + $('#chat').val() + "<br />");
-            $('#chat').val("");
+            $('#chat-div').append(chatTemplate.replace("{0}", "You").replace("{1}", chatInput.val()).replace("{2}", "you"));
+            scrollChatToBottom();
+            chatInput.val("");
+        });
+
+        chatInput.keydown(function (e) {
+            if (e.which == 13 && chatInput.val().length > 0 && opponent) {
+                $('#send').click();
+                return false;
+            }
+        });
+        chatInput.keyup(function (e) {
+            if (chatInput.val().length > 0 && opponent) {
+                $('#send').removeClass('disabled');
+            } else {
+                $('#send').addClass('disabled');
+            }
         });
     });
 
@@ -121,7 +151,7 @@
 
     // 1: circle, 2: square, 3: piece
     function DrawnObject(x, y, shape, size, data, onClick) {
-        this.x = x;
+        this.x = x - leftShift;
         this.y = y;
         this.shape = shape;
         this.size = size;
@@ -191,7 +221,7 @@
             }
         }
         var selectedCoordinates = getLocationXandY(location);
-        piece.x = selectedCoordinates[0];
+        piece.x = selectedCoordinates[0] - leftShift;
         piece.y = selectedCoordinates[1];
         boardLocations[location] = selectedPiece;
         usedPieces[usedPieces.length] = selectedPiece;
@@ -202,7 +232,7 @@
 
     function pieceChosen(piece) {
         var selectedCoordinates = getLocationXandY(16);
-        piece.x = selectedCoordinates[0];
+        piece.x = selectedCoordinates[0] - leftShift;
         piece.y = selectedCoordinates[1];
         draw();
     }
@@ -298,7 +328,7 @@
 
     function draw() {
         context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-        fullRadius = Math.min(context.canvas.width / 2, context.canvas.height / 2);
+        fullRadius = Math.min(context.canvas.width / 2 - 150, context.canvas.height / 2);
 
         context.lineWidth = fullRadius / 95.5;
         context.strokeStyle = '#003300';
@@ -309,25 +339,32 @@
             context.stroke();
         }
 
+        var x = 0;
+
         var text;
         switch (gameState) {
             case game_state_no_player:
-                text = "no player";
+                text = "Waiting for player to join";
+                x = context.canvas.width - 200;
                 break;
             case game_state_choosing_piece:
-                text = "choosing piece";
+                text = "You are choosing a piece";
+                x = context.canvas.width - 190;
                 break;
             case game_state_playing_piece:
-                text = "playing piece";
+                text = "You are playing a piece";
+                x = context.canvas.width - 185;
                 break;
             case game_state_waiting_for_piece:
-                text = "waiting for piece";
+                text = "Waiting for piece from opponent";
+                x = context.canvas.width - 230;
                 break;
             case game_state_waiting_for_play:
-                text = "waiting for play";
+                text = "Waiting for opponent to play";
+                x = context.canvas.width - 215;
                 break;
         }
-        context.fillText("GameState: " + text, context.canvas.width - 150, context.canvas.height - 2);
+        context.fillText("GameState: " + text, x, 10);
     }
 
     function checkForWinner() {
@@ -477,7 +514,7 @@
     function drawPiece(location, square, hole, white, tall) {
         context.lineWidth = fullRadius / 95.5;
         if (tall) {
-            context.lineWidth *= 2;
+            context.lineWidth *= 2.5;
         }
         context.strokeStyle = white ? '#00BB00' : '#002200';
         if (square) {
