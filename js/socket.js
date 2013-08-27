@@ -63,16 +63,16 @@
 	$(document).on("joined", function (event, data) {
 		opponent = data.Uuid;
 		Quarto.socket().sendMessage("accept", uuid);
-		console.log("send: accepted partner");
+		console.log("accepting partner " + opponent);
 	});
 
 	$(document).on("accept", function (event, data) {
 		opponent = data.data;
-		console.log("accpeted partner: " + opponent);
+		console.log("accpeted partner " + opponent);
 	});
 
 	$(document).on("left", function (event, data) {
-		console.log("player left");
+		console.log(opponent + " left");
 		opponent = undefined;
 	});
 
