@@ -4,53 +4,9 @@
         function loadGameHTML(tempUuid) {
             $('body').load('views/game.html', function() {
                 uuid = tempUuid;
-                socket = new WebSocket('ws://' + window.location.host + '/realtime?uuid=' + uuid);
 
-                socket.onmessage = function (event) {
-                    var message = JSON.parse(event.data);
-                    if (message.Uuid == uuid || (message.Uuid != opponent && opponent)) {
-                        console.log("Rejecting message, not opponent.");
-                        return;
-                    }
-
-                    if (message.Action == "action") {
-                        data = JSON.parse(message.Data);
-                        data.Uuid = message.Uuid;
-                        $(document).trigger(data.action, data);
-                    } else {
-                        $(document).trigger(message.Action, message);
-                    }
-                };
-
-                $('#game-div').hide();
-                $('#game-div').fadeIn(500);
-                var chatInput = $('#chat');
-
-                $('#send').click(function () {
-                    socket.send(JSON.stringify({
-                        action: "chat",
-                        message: chatInput.val(),
-                        ToUuid: opponent
-                    }));
-                    $('#chat-div').append(chatTemplate.replace("{0}", "You").replace("{1}", chatInput.val()).replace("{2}", "you"));
-                    scrollChatToBottom();
-                    chatInput.val("");
-                });
-
-                chatInput.keydown(function (e) {
-                    if (e.which == 13 && chatInput.val().length > 0 && opponent) {
-                        $('#send').click();
-                        return false;
-                    }
-                });
-                chatInput.keyup(function (e) {
-                    if (chatInput.val().length > 0 && opponent) {
-                        $('#send').removeClass('disabled');
-                    } else {
-                        $('#send').addClass('disabled');
-                    }
-                });
-
+                Quarto.socket().makeConnection(uuid);
+                Quarto.chat().attachEventsToGamePage();
                 
                 var canvasElement = $("#canvas");
                 context = canvasElement.get(0).getContext("2d");
@@ -58,7 +14,7 @@
 
                 resetState();
 
-                context.canvas.width = window.innerWidth;
+                context.canvas.width = window.innerWidth - 300;
                 context.canvas.height = window.innerHeight;
                 draw();
 
@@ -85,7 +41,6 @@
     var farX = 0.8;
     var closeX = 0.266;
     var selectedPiece = -1;
-    var leftShift = 0.5;
     var context;
     var gameState = 0;
 
@@ -99,49 +54,28 @@
     var shape_square = 2;
     var shape_piece = 3;
 
-    var chatTemplate = '<div class="message-container {2}"><span class="sender">{0}</span><span class="message"> - {1}</span></div>';
-
     var uuid;
-    var opponent;
-
-    var socket;
-
-    $(document).on("keydown", function (event) {
-        $("#chat").focus();
-    });
 
     $(document).on("joined", function (event, data) {
-        opponent = data.Uuid;
-        socket.send(JSON.stringify({
-            action: "accept",
-            myUuid: uuid,
-            ToUuid: opponent
-        }));
         gameState = game_state_waiting_for_piece;
-        console.log("send: accepted partner");
         resetState();
         draw();
     });
 
     $(document).on("accept", function (event, data) {
-        opponent = data.myUuid;
-        console.log("accpeted partner: " + opponent);
         gameState = game_state_choosing_piece;
         resetState();
         draw();
     });
 
     $(document).on("left", function (event, data) {
-        console.log("player left");
-        opponent = undefined;
         gameState = game_state_no_player;
         resetState();
         draw();
     });
 
     $(document).on("chosen", function (event, data) {
-        if (!opponent) return;
-        var pieceId = parseInt(data.pieceId);
+        var pieceId = parseInt(data.data);
         selectedPiece = pieceId;
 
         var piece;
@@ -157,27 +91,16 @@
     });
 
     $(document).on("placed", function (event, data) {
-        if (!opponent) return;
         gameState = game_state_waiting_for_piece;
-        locationChosen(data.location);
+        locationChosen(data.data);
     });
-
-    $(document).on("chat", function (event, data) {
-        $('#chat-div').append(chatTemplate.replace("{0}", opponent).replace("{1}", data.message).replace("{2}", "opponent"));
-        scrollChatToBottom();
-    });
-
-    function scrollChatToBottom() {
-        var chatDiv = document.getElementById("chat-div");
-        chatDiv.scrollTop = chatDiv.scrollHeight;
-    }
 
 
     var drawnObjects = [];
 
     // 1: circle, 2: square, 3: piece
     function DrawnObject(x, y, shape, size, data, onClick) {
-        this.x = x - leftShift;
+        this.x = x;
         this.y = y;
         this.shape = shape;
         this.size = size;
@@ -247,7 +170,7 @@
             }
         }
         var selectedCoordinates = getLocationXandY(location);
-        piece.x = selectedCoordinates[0] - leftShift;
+        piece.x = selectedCoordinates[0];
         piece.y = selectedCoordinates[1];
         boardLocations[location] = selectedPiece;
         usedPieces[usedPieces.length] = selectedPiece;
@@ -258,7 +181,7 @@
 
     function pieceChosen(piece) {
         var selectedCoordinates = getLocationXandY(16);
-        piece.x = selectedCoordinates[0] - leftShift;
+        piece.x = selectedCoordinates[0];
         piece.y = selectedCoordinates[1];
         draw();
     }
@@ -268,9 +191,7 @@
         drawnObjects = [];
 		boardLocations = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
 
-        $('#chat-div').empty();
-
-        drawnObjects[0] = new DrawnObject(0.3, 0, shape_circle, 1);
+        drawnObjects[0] = new DrawnObject(0.6, 0, shape_circle, 1);
         for (var i = 0; i < 16; i++) {
             var coordinates = getLocationXandY(i);
             drawnObjects[i + 1] = new DrawnObject(coordinates[0], coordinates[1], shape_circle, smallSize, i,
@@ -281,16 +202,12 @@
                         }
                         gameState = game_state_choosing_piece;
                         locationChosen(object.data);
-                        socket.send(JSON.stringify({
-                            action: "placed",
-                            location: object.data,
-                            ToUuid: opponent
-                        }));
+                        Quarto.socket().sendMessage("placed", object.data);
                     }
                 });
         }
 
-        var x = -1.1, y = -0.87, z = 0;
+        var x = -0.87, y = -0.87, z = 0;
         for (var i = 0; i < availablePieces.length; i++) {
             var pieceId = availablePieces[i];
             var piece = possiblePieces[pieceId];
@@ -310,11 +227,7 @@
                             pieceChosen(object);
                             selectedPiece = object.data.pieceId;
                             console.log("send: " + selectedPiece);
-                            socket.send(JSON.stringify({
-                                action: "chosen",
-                                pieceId: selectedPiece,
-                                ToUuid: opponent
-                            }));
+                            Quarto.socket().sendMessage("chosen", selectedPiece);
                         }
                     }
                 }
@@ -329,14 +242,14 @@
     }
 
     $(window).resize(function () {
-        context.canvas.width = window.innerWidth;
+        context.canvas.width = window.innerWidth - 300;
         context.canvas.height = window.innerHeight;
         draw();
     });
 
     function draw() {
         context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-        fullRadius = Math.min(context.canvas.width / 2 - 150, context.canvas.height / 2);
+        fullRadius = Math.min(context.canvas.width / 2, context.canvas.height / 2);
 
         context.lineWidth = fullRadius / 95.5;
         context.strokeStyle = '#003300';
@@ -461,7 +374,7 @@
 
     function getLocationXandY(location) {
         var loc = privateGetLocationXandY(location);
-        return [loc[0] + 0.3, loc[1]];
+        return [loc[0] + 0.6, loc[1]];
     }
 
     function privateGetLocationXandY(location) {

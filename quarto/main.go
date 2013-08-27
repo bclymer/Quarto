@@ -8,6 +8,8 @@ import (
     "code.google.com/p/go.net/websocket"
     "encoding/json"
     "quarto/realtime"
+    "quarto/admin"
+    "time"
 )
 
 type Page struct {
@@ -81,6 +83,9 @@ func validateUsername(w http.ResponseWriter, r *http.Request) {
 	valid := realtime.ValidateUsername(r.FormValue("uuid"))
 	test := Success{valid}
 	response, _ := json.Marshal(test)
+	expire := time.Now().AddDate(0, 0, 1)
+	cookie := http.Cookie{"test", "tcookie", "/", "localhost:8080", expire, expire.Format(time.UnixDate), 86400, true, true, "test=tcookie", []string{"test=tcookie"}}
+	http.SetCookie(w, &cookie)
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(w, string(response))
 }
@@ -88,6 +93,7 @@ func validateUsername(w http.ResponseWriter, r *http.Request) {
 func main() {
     http.HandleFunc("/", handler)
     http.HandleFunc("/validate", validateUsername)
+    http.HandleFunc("/admin", admin.Index)
     http.Handle("/realtime", websocket.Handler(realtimeHost))
     http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("../js"))))
     http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("../css"))))
