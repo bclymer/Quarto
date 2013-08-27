@@ -29,74 +29,74 @@
                     }
                 }
             });
+}
+
+return {
+    loadGameHTML: loadGameHTML
+}
+});
+
+var fullRadius;
+var smallSize = 0.18;
+var farX = 0.8;
+var closeX = 0.266;
+var selectedPiece = -1;
+var context;
+var gameState = 0;
+
+var game_state_no_player = 0;
+var game_state_waiting_for_piece = 1;
+var game_state_playing_piece = 2;
+var game_state_choosing_piece = 3;
+var game_state_waiting_for_play = 4;
+
+var shape_circle = 1;
+var shape_square = 2;
+var shape_piece = 3;
+
+var uuid;
+
+$(document).on("joined", function (event, data) {
+    gameState = game_state_waiting_for_piece;
+    resetState();
+    draw();
+});
+
+$(document).on("accept", function (event, data) {
+    gameState = game_state_choosing_piece;
+    resetState();
+    draw();
+});
+
+$(document).on("left", function (event, data) {
+    gameState = game_state_no_player;
+    resetState();
+    draw();
+});
+
+$(document).on("chosen", function (event, data) {
+    var pieceId = parseInt(data.data);
+    selectedPiece = pieceId;
+
+    var piece;
+    for (var i = 0; i < drawnObjects.length; i++) {
+        if (drawnObjects[i].shape == 3 && drawnObjects[i].data.pieceId == pieceId) {
+            piece = drawnObjects[i];
+            break;
         }
+    }
 
-        return {
-            loadGameHTML: loadGameHTML
-        }
-    });
+    gameState = game_state_playing_piece;
+    pieceChosen(piece);
+});
 
-    var fullRadius;
-    var smallSize = 0.18;
-    var farX = 0.8;
-    var closeX = 0.266;
-    var selectedPiece = -1;
-    var context;
-    var gameState = 0;
-
-    var game_state_no_player = 0;
-    var game_state_waiting_for_piece = 1;
-    var game_state_playing_piece = 2;
-    var game_state_choosing_piece = 3;
-    var game_state_waiting_for_play = 4;
-
-    var shape_circle = 1;
-    var shape_square = 2;
-    var shape_piece = 3;
-
-    var uuid;
-
-    $(document).on("joined", function (event, data) {
-        gameState = game_state_waiting_for_piece;
-        resetState();
-        draw();
-    });
-
-    $(document).on("accept", function (event, data) {
-        gameState = game_state_choosing_piece;
-        resetState();
-        draw();
-    });
-
-    $(document).on("left", function (event, data) {
-        gameState = game_state_no_player;
-        resetState();
-        draw();
-    });
-
-    $(document).on("chosen", function (event, data) {
-        var pieceId = parseInt(data.data);
-        selectedPiece = pieceId;
-
-        var piece;
-        for (var i = 0; i < drawnObjects.length; i++) {
-            if (drawnObjects[i].shape == 3 && drawnObjects[i].data.pieceId == pieceId) {
-                piece = drawnObjects[i];
-                break;
-            }
-        }
-
-        gameState = game_state_playing_piece;
-        pieceChosen(piece);
-    });
-
-    $(document).on("placed", function (event, data) {
-        gameState = game_state_waiting_for_piece;
-        locationChosen(data.data);
-    });
+$(document).on("placed", function (event, data) {
+    gameState = game_state_waiting_for_piece;
+    locationChosen(data.data);
+});
 
 
-    var drawnObjects = [];
+var drawnObjects = [];
 
     // 1: circle, 2: square, 3: piece
     function DrawnObject(x, y, shape, size, data, onClick) {
@@ -189,7 +189,7 @@
     function resetState() {
         usedPieces = [];
         drawnObjects = [];
-		boardLocations = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
+        boardLocations = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
 
         drawnObjects[0] = new DrawnObject(0.6, 0, shape_circle, 1);
         for (var i = 0; i < 16; i++) {
@@ -231,7 +231,7 @@
                         }
                     }
                 }
-            );
+                );
 
             y += 0.25;
             if (++z == 8) {
@@ -265,25 +265,25 @@
         var text;
         switch (gameState) {
             case game_state_no_player:
-                text = "Waiting for player to join";
-                x = context.canvas.width - 200;
-                break;
+            text = "Waiting for player to join";
+            x = context.canvas.width - 200;
+            break;
             case game_state_choosing_piece:
-                text = "You are choosing a piece";
-                x = context.canvas.width - 190;
-                break;
+            text = "You are choosing a piece";
+            x = context.canvas.width - 190;
+            break;
             case game_state_playing_piece:
-                text = "You are playing a piece";
-                x = context.canvas.width - 185;
-                break;
+            text = "You are playing a piece";
+            x = context.canvas.width - 185;
+            break;
             case game_state_waiting_for_piece:
-                text = "Waiting for piece from opponent";
-                x = context.canvas.width - 230;
-                break;
+            text = "Waiting for piece from opponent";
+            x = context.canvas.width - 230;
+            break;
             case game_state_waiting_for_play:
-                text = "Waiting for opponent to play";
-                x = context.canvas.width - 215;
-                break;
+            text = "Waiting for opponent to play";
+            x = context.canvas.width - 215;
+            break;
         }
         context.fillText("GameState: " + text, x, 10);
     }
@@ -361,7 +361,7 @@
             if (isFourOrZero(square) || isFourOrZero(hole) || isFourOrZero(white) || isFourOrZero(tall)) {
                 alert("Winner");
                 resetState();
-				draw();
+                draw();
                 return true;
             }
             return false;
@@ -380,39 +380,39 @@
     function privateGetLocationXandY(location) {
         switch (location) {
             case 0:
-                return [0, -farX];
+            return [0, -farX];
             case 1:
-                return [closeX, -farX + closeX];
+            return [closeX, -farX + closeX];
             case 2:
-                return [farX - closeX, -closeX];
+            return [farX - closeX, -closeX];
             case 3:
-                return [farX, 0];
+            return [farX, 0];
             case 4:
-                return [-closeX, -farX + closeX];
+            return [-closeX, -farX + closeX];
             case 5:
-                return [0, -closeX];
+            return [0, -closeX];
             case 6:
-                return [closeX, 0];
+            return [closeX, 0];
             case 7:
-                return [farX - closeX, closeX];
+            return [farX - closeX, closeX];
             case 8:
-                return [-farX + closeX, -closeX];
+            return [-farX + closeX, -closeX];
             case 9:
-                return [-closeX, 0];
+            return [-closeX, 0];
             case 10:
-                return [0, closeX];
+            return [0, closeX];
             case 11:
-                return [closeX, farX - closeX];
+            return [closeX, farX - closeX];
             case 12:
-                return [-farX, 0];
+            return [-farX, 0];
             case 13:
-                return [-farX + closeX, closeX];
+            return [-farX + closeX, closeX];
             case 14:
-                return [-closeX, farX - closeX];
+            return [-closeX, farX - closeX];
             case 15:
-                return [0, farX];
+            return [0, farX];
             case 16:
-                return [-0.85, -0.85];
+            return [-0.85, -0.85];
         }
     }
 
@@ -449,22 +449,22 @@
     }
 
     var possiblePieces = [
-        {square: true, hole: true, white: true, tall: true},
-        {square: true, hole: true, white: true, tall: false},
-        {square: true, hole: true, white: false, tall: true},
-        {square: true, hole: true, white: false, tall: false},
-        {square: true, hole: false, white: true, tall: true},
-        {square: true, hole: false, white: true, tall: false},
-        {square: true, hole: false, white: false, tall: true},
-        {square: true, hole: false, white: false, tall: false},
-        {square: false, hole: true, white: true, tall: true},
-        {square: false, hole: true, white: true, tall: false},
-        {square: false, hole: true, white: false, tall: true},
-        {square: false, hole: true, white: false, tall: false},
-        {square: false, hole: false, white: true, tall: true},
-        {square: false, hole: false, white: true, tall: false},
-        {square: false, hole: false, white: false, tall: true},
-        { square: false, hole: false, white: false, tall: false }
+    {square: true, hole: true, white: true, tall: true},
+    {square: true, hole: true, white: true, tall: false},
+    {square: true, hole: true, white: false, tall: true},
+    {square: true, hole: true, white: false, tall: false},
+    {square: true, hole: false, white: true, tall: true},
+    {square: true, hole: false, white: true, tall: false},
+    {square: true, hole: false, white: false, tall: true},
+    {square: true, hole: false, white: false, tall: false},
+    {square: false, hole: true, white: true, tall: true},
+    {square: false, hole: true, white: true, tall: false},
+    {square: false, hole: true, white: false, tall: true},
+    {square: false, hole: true, white: false, tall: false},
+    {square: false, hole: false, white: true, tall: true},
+    {square: false, hole: false, white: true, tall: false},
+    {square: false, hole: false, white: false, tall: true},
+    { square: false, hole: false, white: false, tall: false }
     ];
 
     var usedPieces = [];
