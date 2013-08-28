@@ -6,10 +6,12 @@ import (
     "html/template"
     "io/ioutil"
     "code.google.com/p/go.net/websocket"
+	"github.com/nu7hatch/gouuid"
     "encoding/json"
     "quarto/realtime"
     "quarto/admin"
     "time"
+    "log"
 )
 
 type Page struct {
@@ -26,13 +28,21 @@ type Success struct {
 }
 
 func realtimeHost(ws *websocket.Conn) {
-	uuid := ws.Request().URL.Query().Get("uuid")
-	subscription := realtime.Subscribe(uuid)
-	subscription.Uuid = uuid;
-	defer subscription.Cancel()
+	username := ws.Request().URL.Query().Get("username")
 
-	realtime.Join(uuid)
-	defer realtime.Leave(uuid)
+	userUuid, err := uuid.NewV4()
+	if err != nil {
+	    log.Print("error: ", err)
+	    return
+	}
+
+	uuidStr := userUuid.String()
+
+	websocket.Message.Send(ws, uuidStr)
+
+	user := realtime.Subscribe(uuidStr, username)
+
+	defer user.Cancel()
 
 	newMessages := make(chan string)
 	go func() {
@@ -49,7 +59,7 @@ func realtimeHost(ws *websocket.Conn) {
 
 	for {
 		select {
-		case event := <-subscription.New:
+		case event := <-user.Events:
 			if websocket.JSON.Send(ws, &event) != nil {
 				// They disconnected.
 				return
@@ -64,7 +74,7 @@ func realtimeHost(ws *websocket.Conn) {
 			b := []byte(msg)
 			json.Unmarshal(b, &m)
 
-			realtime.Action("action", msg, uuid, m.ToUuid)
+			realtime.Action("action", msg, uuidStr, m.ToUuid)
 		}
 	}
 
@@ -98,6 +108,7 @@ func main() {
     http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("../js"))))
     http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("../css"))))
     http.Handle("/views/", http.StripPrefix("/views/", http.FileServer(http.Dir("../views"))))
+    http.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(http.Dir("../fonts"))))
     http.ListenAndServe(":8080", nil)
 }
 

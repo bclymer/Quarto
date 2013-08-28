@@ -43,7 +43,9 @@
 	});
 
 	$(document).on("keydown", function (event) {
-		chatInput.focus();
+		if (chatInput) {
+			chatInput.focus();
+		}
 	});
 
 	$(document).on("chat", function (event, data) {

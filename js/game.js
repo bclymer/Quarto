@@ -382,7 +382,13 @@
 
         function checkValues(square, hole, white, tall) {
             if (isFourOrZero(square) || isFourOrZero(hole) || isFourOrZero(white) || isFourOrZero(tall)) {
-                alert("Winner");
+                if (gameState == game_state_waiting_for_piece) {
+                    $('#dialog-message').text("You Lost!<br />");
+                    $("#popup").bPopup();
+                } else {
+                    $('#dialog-message').text("You Won!<br />");
+                    $("#popup").bPopup();
+                }
                 resetState();
                 draw();
                 return true;

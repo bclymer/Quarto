@@ -1,12 +1,14 @@
 package admin
 
 import (
-	"log"
 	"fmt"
     "net/http"
+    "quarto/realtime"
+    "log"
 )
 
 func Index(w http.ResponseWriter, r *http.Request) {
-	log.Print("Yea")
-	fmt.Fprint(w, "Test")
+	names := realtime.GetAllUsers()
+	fmt.Fprint(w, names)
+	log.Print("Done")
 }
