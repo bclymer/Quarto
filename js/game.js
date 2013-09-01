@@ -48,7 +48,7 @@
     Quarto.game = (function () {
         function loadGameHTML(uuid) {
             $('body').load('views/game.html', function() {
-                Quarto.socket().makeConnection(uuid);
+                $('body').animate({backgroundColor: "#EEEEEE"}, 500);
                 Quarto.chat().attachEventsToGamePage();
 
                 $('#game-div').hide();

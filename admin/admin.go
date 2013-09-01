@@ -8,7 +8,7 @@ import (
 )
 
 func Index(w http.ResponseWriter, r *http.Request) {
-	names := realtime.GetAllUsers()
+	names := realtime.GetUserMap()
 	fmt.Fprint(w, names)
 	log.Print("Done")
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/nu7hatch/gouuid"
     "encoding/json"
     "quarto/realtime"
+    "quarto/constants"
     "quarto/admin"
     "time"
     "log"
@@ -19,8 +20,8 @@ type Page struct {
     Body  []byte
 }
 
-type MessageToWhom struct {
-	ToUuid	string
+type GeneratedUuid struct {
+	Uuid	string
 }
 
 type Success struct {
@@ -30,15 +31,12 @@ type Success struct {
 func realtimeHost(ws *websocket.Conn) {
 	username := ws.Request().URL.Query().Get("username")
 
-	userUuid, err := uuid.NewV4()
-	if err != nil {
-	    log.Print("error: ", err)
-	    return
-	}
-
+	userUuid, _ := uuid.NewV4()
 	uuidStr := userUuid.String()
 
-	websocket.Message.Send(ws, uuidStr)
+	data := realtime.MakeDataString(constants.UuidAssigned, uuidStr)
+
+	websocket.JSON.Send(ws, realtime.Event { data, "" })
 
 	user := realtime.Subscribe(uuidStr, username)
 
@@ -70,11 +68,16 @@ func realtimeHost(ws *websocket.Conn) {
 				return
 			}
 
-			var m MessageToWhom
-			b := []byte(msg)
-			json.Unmarshal(b, &m)
+			var requestData realtime.Data
+			json.Unmarshal([]byte(msg), &requestData)
 
-			realtime.Action("action", msg, uuidStr, m.ToUuid)
+			log.Println("Recieved Message", requestData)
+
+			if (requestData.Action == "server") {
+				realtime.ServerSideAction(requestData, uuidStr)
+			} else {
+				realtime.Action(msg, uuidStr)
+			}
 		}
 	}
 
@@ -90,6 +93,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func validateUsername(w http.ResponseWriter, r *http.Request) {
+	log.Println("main.validateUsername")
 	valid := realtime.ValidateUsername(r.FormValue("uuid"))
 	test := Success{valid}
 	response, _ := json.Marshal(test)
@@ -100,10 +104,51 @@ func validateUsername(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(response))
 }
 
+func rooms(w http.ResponseWriter, r *http.Request) {
+	log.Println("main.rooms")
+	roomMap := realtime.GetRoomMap()
+	roomList := make([]realtime.RoomDTO, len(roomMap))
+	i := 0
+	for _, room := range roomMap {
+		members := realtime.GetRoomUserCount(room)
+		roomList[i] = realtime.RoomDTO { room.Name, room.Private, room.Password, room.Urid, members }
+		i++
+	}
+	serializedRooms, _ := json.Marshal(roomList)
+	fmt.Fprint(w, string(serializedRooms))
+}
+
+func users(w http.ResponseWriter, r *http.Request) {
+	log.Println("main.users")
+	userMap := realtime.GetUserMap()
+	userList := make([]realtime.UserDTO, len(userMap))
+	i := 0
+	for _, user := range userMap {
+		roomName := ""
+		if (user.Room != nil) {
+			roomName = user.Room.Name
+		}
+		userList[i] = realtime.UserDTO { user.Username, user.Uuid, roomName }
+		i = i + 1
+	}
+	serializedUsers, _ := json.Marshal(userList)
+	fmt.Fprint(w, string(serializedUsers))
+}
+
+func test(w http.ResponseWriter, r *http.Request) {
+	test, _ := http.Get("http://www.bclymer.com")
+	defer test.Body.Close()
+	body, _ := ioutil.ReadAll(test.Body)
+	fmt.Fprint(w, string(body))
+}
+
 func main() {
     http.HandleFunc("/", handler)
     http.HandleFunc("/validate", validateUsername)
     http.HandleFunc("/admin", admin.Index)
+    http.HandleFunc("/rooms", rooms)
+    http.HandleFunc("/users", users)
+    http.HandleFunc("/test", test)
     http.Handle("/realtime", websocket.Handler(realtimeHost))
     http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("../js"))))
     http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("../css"))))

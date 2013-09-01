@@ -1,10 +1,10 @@
 (function ($) {
 
 	var chatTemplate = '<div class="message-container {2}"><span class="sender">{0}</span><span class="message"> - {1}</span></div>';
-	var opponent;
 	var sendButton;
 	var chatInput;
 	var chatDiv;
+	var cachedEvents = [];
 	
 	Quarto.chat = (function() {
 
@@ -14,26 +14,35 @@
 			chatDiv = $('#chat-div');
 
 			sendButton.click(function () {
-				Quarto.socket().sendMessage("chat", chatInput.val());
-				chatDiv.append(chatTemplate.replace("{0}", "You").replace("{1}", chatInput.val()).replace("{2}", "you"));
+				var chatData = JSON.stringify({
+					username: Quarto.socket().getUsername(),
+					message: chatInput.val(),
+					uuid: Quarto.socket().getUuid(),
+				});
+				Quarto.socket().sendMessage(Quarto.constants.chat, chatData);
 				scrollChatToBottom();
 				chatInput.val("");
 			});
 
 			chatInput.keydown(function (e) {
-				if (e.which == 13 && chatInput.val().length > 0 && opponent) {
+				if (e.which == 13 && chatInput.val().length > 0) {
 					sendButton.click();
 					return false;
 				}
 			});
 
 			chatInput.keyup(function (e) {
-				if (chatInput.val().length > 0 && opponent) {
+				if (chatInput.val().length > 0) {
 					sendButton.removeClass("disabled");
 				} else {
 					sendButton.addClass("disabled");
 				}
 			});
+			
+			$.each(cachedEvents, function (index, data) {
+				applyMessage(data);
+			});
+			cachedEvents = [];
 		}
 
 		return {
@@ -48,40 +57,38 @@
 		}
 	});
 
-	$(document).on("chat", function (event, data) {
-		chatDiv.append(chatTemplate.replace("{0}", opponent).replace("{1}", data.data).replace("{2}", "opponent"));
-		scrollChatToBottom();
+	$(document).on(Quarto.constants.chat, function (event, data) {
+		if (!chatDiv) {
+			cachedEvents.push(data)
+			return;
+		} else {
+			applyMessage(data);
+		}
 	});
 
-	$(document).on("left", function (event, data) {
-		chatDiv.empty();
-	});
+	function applyMessage(data) {
+		var chatData = JSON.parse(data.Data);
+		if (chatData.uuid == Quarto.socket().getUuid()) {
+			chatDiv.append(chatTemplate.replace("{0}", "You").replace("{1}", chatData.message).replace("{2}", "you"));
+		} else {
+			chatDiv.append(chatTemplate.replace("{0}", chatData.username).replace("{1}", chatData.message).replace("{2}", "opponent"));
+		}
+		scrollChatToBottom();
+	}
 
 	function scrollChatToBottom() {
 		var chatDiv = document.getElementById("chat-div");
 		chatDiv.scrollTop = chatDiv.scrollHeight;
 	}
 
-	$(document).on("accept", function (event, data) {
-		chatDiv.empty();
-		chatDiv.append(chatTemplate.replace("{0}", "System").replace("{1}", data.data + " has joined your game.").replace("{2}", "opponent"));
+	$(document).on(Quarto.constants.joinedRoom, function (event, data) {
+		if (!chatDiv) return;
+		chatDiv.append(chatTemplate.replace("{0}", "System").replace("{1}", data.Data + " joined the room.").replace("{2}", "opponent"));
 	});
 
-	$(document).on("joined", function (event, data) {
-		chatDiv.empty();
-		chatDiv.append(chatTemplate.replace("{0}", "System").replace("{1}", data.Uuid + " has joined your game.").replace("{2}", "opponent"));
-	});
-
-	$(document).on("joined", function (event, data) {
-		opponent = data.Uuid;
-	});
-
-	$(document).on("accept", function (event, data) {
-		opponent = data.data;
-	});
-
-	$(document).on("left", function (event, data) {
-		opponent = undefined;
+	$(document).on(Quarto.constants.leftRoom, function (event, data) {
+		if (!chatDiv) return;
+		chatDiv.append(chatTemplate.replace("{0}", "System").replace("{1}", data.Data + " left the room.").replace("{2}", "opponent"));
 	});
 
 })(jQuery);

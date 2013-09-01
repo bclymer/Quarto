@@ -8,9 +8,12 @@ var Quarto = {};
 
 	Quarto.main = (function() {
 
-		function loadGameHTML(uuid) {
-			$('body').animate({backgroundColor: "#EEEEEE"}, 500);
-			Quarto.game().loadGameHTML(uuid);
+		function loadWaitingRoomHTML() {
+			Quarto.waitingRoom().loadWaitingRoom();
+		}
+
+		function loadGameHTML() {
+			Quarto.game().loadGameHTML();
 		};
 
 		function loadRegisterHTML() {
@@ -18,9 +21,17 @@ var Quarto = {};
 		}
 
 		return {
+			loadWaitingRoomHTML: loadWaitingRoomHTML,
 			loadRegisterHTML: loadRegisterHTML,
-			loadGameHTML: loadGameHTML
+			loadGameHTML: loadGameHTML,
 		};
 	});
+
+	$.fn.animateHighlight = function(highlightColor, duration) {
+	    var highlightBg = highlightColor || "#FFFF9C";
+	    var animateMs = duration || 1500;
+	    var originalBg = this.css("backgroundColor");
+	    this.stop().css("background-color", highlightBg).animate({backgroundColor: originalBg}, animateMs);
+	};
 
 })(jQuery);

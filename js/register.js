@@ -29,7 +29,8 @@
 			$.get("validate?uuid=" + username.val(),
 				function(data) {
 					if (data.Valid) {
-						Quarto.main().loadGameHTML(username.val());
+						Quarto.socket().makeConnection(username.val());
+						Quarto.main().loadWaitingRoomHTML();
 					} else {
 						toastr.error('Username "' + username.val() + '" is already in use.', 'Error')
 					}
