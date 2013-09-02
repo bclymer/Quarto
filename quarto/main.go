@@ -6,11 +6,8 @@ import (
     "html/template"
     "io/ioutil"
     "code.google.com/p/go.net/websocket"
-	"github.com/nu7hatch/gouuid"
     "encoding/json"
     "quarto/realtime"
-    "quarto/constants"
-    "quarto/admin"
     "time"
     "log"
 )
@@ -31,14 +28,7 @@ type Success struct {
 func realtimeHost(ws *websocket.Conn) {
 	username := ws.Request().URL.Query().Get("username")
 
-	userUuid, _ := uuid.NewV4()
-	uuidStr := userUuid.String()
-
-	data := realtime.MakeDataString(constants.UuidAssigned, uuidStr)
-
-	websocket.JSON.Send(ws, realtime.Event { data, "" })
-
-	user := realtime.Subscribe(uuidStr, username)
+	user := realtime.Subscribe(username)
 
 	defer user.Cancel()
 
@@ -68,16 +58,12 @@ func realtimeHost(ws *websocket.Conn) {
 				return
 			}
 
-			var requestData realtime.Data
+			var requestData realtime.ClientEvent
 			json.Unmarshal([]byte(msg), &requestData)
 
 			log.Println("Recieved Message", requestData)
 
-			if (requestData.Action == "server") {
-				realtime.ServerSideAction(requestData, uuidStr)
-			} else {
-				realtime.Action(msg, uuidStr)
-			}
+			realtime.ServerSideAction(requestData, username)
 		}
 	}
 
@@ -107,11 +93,11 @@ func validateUsername(w http.ResponseWriter, r *http.Request) {
 func rooms(w http.ResponseWriter, r *http.Request) {
 	log.Println("main.rooms")
 	roomMap := realtime.GetRoomMap()
-	roomList := make([]realtime.RoomDTO, len(roomMap))
+	roomList := make([]realtime.LobbyRoomDTO, len(*roomMap))
 	i := 0
-	for _, room := range roomMap {
+	for _, room := range *roomMap {
 		members := realtime.GetRoomUserCount(room)
-		roomList[i] = realtime.RoomDTO { room.Name, room.Private, room.Password, room.Urid, members }
+		roomList[i] = realtime.LobbyRoomDTO { room.Name, room.Private, members }
 		i++
 	}
 	serializedRooms, _ := json.Marshal(roomList)
@@ -121,14 +107,14 @@ func rooms(w http.ResponseWriter, r *http.Request) {
 func users(w http.ResponseWriter, r *http.Request) {
 	log.Println("main.users")
 	userMap := realtime.GetUserMap()
-	userList := make([]realtime.UserDTO, len(userMap))
+	userList := make([]realtime.LobbyUserDTO, len(*userMap))
 	i := 0
-	for _, user := range userMap {
+	for _, user := range *userMap {
 		roomName := ""
 		if (user.Room != nil) {
 			roomName = user.Room.Name
 		}
-		userList[i] = realtime.UserDTO { user.Username, user.Uuid, roomName }
+		userList[i] = realtime.LobbyUserDTO { user.Username, roomName }
 		i = i + 1
 	}
 	serializedUsers, _ := json.Marshal(userList)
@@ -145,7 +131,6 @@ func test(w http.ResponseWriter, r *http.Request) {
 func main() {
     http.HandleFunc("/", handler)
     http.HandleFunc("/validate", validateUsername)
-    http.HandleFunc("/admin", admin.Index)
     http.HandleFunc("/rooms", rooms)
     http.HandleFunc("/users", users)
     http.HandleFunc("/test", test)

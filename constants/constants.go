@@ -1,15 +1,21 @@
 package constants
 
 var (
-	AddRoom = "com.bclymer.quarto.room.add"
-	RemoveRoom = "com.bclymer.quarto.room.remove"
-	ChangeRoom = "com.bclymer.quarto.room.change"
-	LeftRoom = "com.bclymer.quarto.room.left"
-	JoinedRoom = "com.bclymer.quarto.room.joined"
+	AddUser = 				"com.bclymer.quarto.user.add"
+	RemoveUser = 			"com.bclymer.quarto.user.remove"
+	UserChallenge = 		"com.bclymer.quarto.user.challenge"
 
-	AddUser = "com.bclymer.quarto.user.add"
-	RemoveUser = "com.bclymer.quarto.user.remove"
+	JoinRoom = 				"com.bclymer.quarto.room.join"
+	LeaveRoom = 			"com.bclymer.quarto.room.leave"
 
-	Chat = "com.bclymer.quarto.chat"
-	UuidAssigned = "com.bclymer.quarto.uuid-assigned"
+	AddRoom = 				"com.bclymer.quarto.room.add"
+	RemoveRoom = 			"com.bclymer.quarto.room.remove"
+	ChangeRoomName = 		"com.bclymer.quarto.room.changeName"
+	ChangeRoomPrivacy =		"com.bclymer.quarto.room.changePrivacy"
+	ChangeRoomPlayerOne = 	"com.bclymer.quarto.room.changePlayerOne"
+	ChangeRoomPlayerTwo = 	"com.bclymer.quarto.room.changePlayerTwo"
+	ChangeRoomObservers = 	"com.bclymer.quarto.room.changeObservers"
+
+	Chat = 					"com.bclymer.quarto.chat"
+	UuidAssigned = 			"com.bclymer.quarto.uuidAssigned"
 )

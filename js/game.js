@@ -60,7 +60,7 @@
 
                 resetState();
 
-                context.canvas.width = window.innerWidth - 300;
+                context.canvas.width = window.innerWidth - 600;
                 context.canvas.height = window.innerHeight;
                 draw();
 
@@ -214,7 +214,7 @@
         drawnObjects = [];
         boardLocations = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
 
-        drawnObjects[0] = new DrawnObject(0.6, 0, shape_circle, 1);
+        drawnObjects[0] = new DrawnObject(0, 0, shape_circle, 1);
         for (var i = 0; i < 16; i++) {
             var coordinates = getLocationXandY(i);
             drawnObjects[i + 1] = new DrawnObject(coordinates[0], coordinates[1], shape_circle, smallSize, i,
@@ -265,7 +265,7 @@
     }
 
     $(window).resize(function () {
-        context.canvas.width = window.innerWidth - 300;
+        context.canvas.width = window.innerWidth - 600;
         context.canvas.height = window.innerHeight;
         draw();
     });
@@ -403,7 +403,7 @@
 
     function getLocationXandY(location) {
         var loc = privateGetLocationXandY(location);
-        return [loc[0] + 0.6, loc[1]];
+        return [loc[0], loc[1]];
     }
 
     function privateGetLocationXandY(location) {

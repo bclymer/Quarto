@@ -114,6 +114,8 @@
 
 	$(document).on(Quarto.constants.addUser, function(event, data) {
 		var user = JSON.parse(data.Data);
+		if (user.Uuid == Quarto.socket().getUuid()) return;
+		var roomName = user.RoomName == "" ? "None" : user.RoomName;
 		var newRow = $(userRowConstant.replace("{UserUuid}", user.Uuid)
 										.replace("{Username}", user.Username)
 										.replace("{Challenge}", user.Uuid)
