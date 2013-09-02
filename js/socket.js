@@ -19,8 +19,8 @@
 					return;
 				}
 				data = JSON.parse(message.Data);
-				console.log("Triggering " + data.Action)
-				$(document).trigger(data.Action, data);
+				console.log("Triggering " + message.Action)
+				$(document).trigger(message.Action, data);
 			};
 		}
 

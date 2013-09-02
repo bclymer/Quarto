@@ -1,17 +1,22 @@
 (function ($) {
 	
 	Quarto.constants = {
-		addRoom: "com.bclymer.quarto.room.add",
-		removeRoom: "com.bclymer.quarto.room.remove",
-		changeRoom: "com.bclymer.quarto.room.change",
-		leftRoom: "com.bclymer.quarto.room.left",
-		joinedRoom: "com.bclymer.quarto.room.joined",
+		addUser: 				"com.bclymer.quarto.user.add"
+		removeUser: 			"com.bclymer.quarto.user.remove"
+		userChallenge: 			"com.bclymer.quarto.user.challenge"
 
-		addUser: "com.bclymer.quarto.user.add",
-		removeUser: "com.bclymer.quarto.user.remove",
+		joinRoom: 				"com.bclymer.quarto.room.join"
+		leaveRoom: 				"com.bclymer.quarto.room.leave"
 
-		chat: "com.bclymer.quarto.chat",
-		uuidAssigned: "com.bclymer.quarto.uuid-assigned"
+		addRoom: 				"com.bclymer.quarto.room.add"
+		removeRoom: 			"com.bclymer.quarto.room.remove"
+		changeRoomName: 		"com.bclymer.quarto.room.changeName"
+		changeRoomPrivacy:		"com.bclymer.quarto.room.changePrivacy"
+		changeRoomPlayerOne:	"com.bclymer.quarto.room.changePlayerOne"
+		changeRoomPlayerTwo: 	"com.bclymer.quarto.room.changePlayerTwo"
+		changeRoomObservers: 	"com.bclymer.quarto.room.changeObservers"
+
+		chat: 					"com.bclymer.quarto.chat"
 	};
 
 })(jQuery);

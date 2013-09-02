@@ -1,38 +1,37 @@
 package main
 
 import (
+	"code.google.com/p/go.net/websocket"
+	"encoding/json"
 	"fmt"
-    "net/http"
-    "html/template"
-    "io/ioutil"
-    "code.google.com/p/go.net/websocket"
-    "encoding/json"
-    "quarto/realtime"
-    "time"
-    "log"
+	"html/template"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"quarto/realtime"
+	"time"
 )
 
 type Page struct {
-    Title string
-    Body  []byte
+	Title string
+	Body  []byte
 }
 
 type GeneratedUuid struct {
-	Uuid	string
+	Uuid string
 }
 
 type Success struct {
-	Valid	bool
+	Valid bool
 }
 
 func realtimeHost(ws *websocket.Conn) {
 	username := ws.Request().URL.Query().Get("username")
 
 	user := realtime.Subscribe(username)
-
 	defer user.Cancel()
 
-	newMessages := make(chan string)
+	newMessages := make(chan string, 10)
 	go func() {
 		var msg string
 		for {
@@ -71,11 +70,11 @@ func realtimeHost(ws *websocket.Conn) {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-    title := "Quarto Online!"
-    p := loadPage(title)
-    t, _ := template.ParseFiles("../views/index.html")
-    w.Header().Set("Content-Type", "text/html")
-    t.Execute(w, p)
+	title := "Quarto Online!"
+	p := loadPage(title)
+	t, _ := template.ParseFiles("../views/index.html")
+	w.Header().Set("Content-Type", "text/html")
+	t.Execute(w, p)
 }
 
 func validateUsername(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +96,7 @@ func rooms(w http.ResponseWriter, r *http.Request) {
 	i := 0
 	for _, room := range *roomMap {
 		members := realtime.GetRoomUserCount(room)
-		roomList[i] = realtime.LobbyRoomDTO { room.Name, room.Private, members }
+		roomList[i] = realtime.LobbyRoomDTO{room.Name, room.Private, members}
 		i++
 	}
 	serializedRooms, _ := json.Marshal(roomList)
@@ -111,10 +110,10 @@ func users(w http.ResponseWriter, r *http.Request) {
 	i := 0
 	for _, user := range *userMap {
 		roomName := ""
-		if (user.Room != nil) {
+		if user.Room != nil {
 			roomName = user.Room.Name
 		}
-		userList[i] = realtime.LobbyUserDTO { user.Username, roomName }
+		userList[i] = realtime.LobbyUserDTO{user.Username, roomName}
 		i = i + 1
 	}
 	serializedUsers, _ := json.Marshal(userList)
@@ -129,21 +128,21 @@ func test(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-    http.HandleFunc("/", handler)
-    http.HandleFunc("/validate", validateUsername)
-    http.HandleFunc("/rooms", rooms)
-    http.HandleFunc("/users", users)
-    http.HandleFunc("/test", test)
-    http.Handle("/realtime", websocket.Handler(realtimeHost))
-    http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("../js"))))
-    http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("../css"))))
-    http.Handle("/views/", http.StripPrefix("/views/", http.FileServer(http.Dir("../views"))))
-    http.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(http.Dir("../fonts"))))
-    http.ListenAndServe(":8080", nil)
+	http.HandleFunc("/", handler)
+	http.HandleFunc("/validate", validateUsername)
+	http.HandleFunc("/rooms", rooms)
+	http.HandleFunc("/users", users)
+	http.HandleFunc("/test", test)
+	http.Handle("/realtime", websocket.Handler(realtimeHost))
+	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("../js"))))
+	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("../css"))))
+	http.Handle("/views/", http.StripPrefix("/views/", http.FileServer(http.Dir("../views"))))
+	http.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(http.Dir("../fonts"))))
+	http.ListenAndServe(":8080", nil)
 }
 
 func loadPage(title string) *Page {
-    filename := title + ".html"
-    body, _ := ioutil.ReadFile(filename)
-    return &Page{Title: title, Body: body}
+	filename := title + ".html"
+	body, _ := ioutil.ReadFile(filename)
+	return &Page{Title: title, Body: body}
 }
