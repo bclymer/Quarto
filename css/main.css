@@ -68,34 +68,47 @@ h2 {
 }
 
 .chat-div {
-	display: inline;
-	position: absolute;
 	bottom: 50px;
 	top: 13px;
-	right: 0px;
-	width: 300px;
 	overflow-y: scroll;
 }
 
 .chat-form {
 	display: block;
 	position: absolute;
-	bottom: 10px;
-	right: 0px;
-	width: 300px;
+	bottom: 5px;
 }
 
 .room-details {
 	display: block;
 	position: absolute;
-	bottom: 10px;
 	left: 0px;
 	width: 300px;
+	height: 100%;
+}
+
+.bordered {
+	border: 2px solid #a1a1a1;
+	padding: 5px;
+	border-radius: 3px;
+}
+
+.chat-container {
+	display: inline;
+	position: absolute;
+	right: 0px;
+	width: 300px;
+	height: 100%;
+}
+
+.bottom {
+	position: absolute;
+	bottom: 5px;
 }
 
 #canvas {
-	 display: inline;
-	 position: absolute;
-	 top: 0px;
-	 left: 300px;
+	display: inline;
+	position: absolute;
+	top: 0px;
+	left: 300px;
 }

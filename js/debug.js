@@ -16,28 +16,6 @@
 			}
 		}
 
-		function joinRoom(urid) {
-			var room = JSON.stringify({
-				Action: Quarto.constants.joinedRoom,
-				Data: JSON.stringify({
-					Urid: urid
-				})
-			});
-			Quarto.socket().sendMessage("server", room);
-		}
-
-		function addRoom(name, private, password) {
-			var room = JSON.stringify({
-				Action: Quarto.constants.addRoom,
-				Data: JSON.stringify({
-					Name: name,
-					Private: private,
-					Password: password
-				})
-			});
-			Quarto.socket().sendMessage("server", room);
-		}
-
 		return {
 			simulateUsers: simulateUsers,
 			joinRoom: joinRoom,

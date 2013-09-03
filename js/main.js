@@ -8,16 +8,18 @@ var Quarto = {};
 
 	Quarto.main = (function() {
 
+		unloadLoadedModules();
+
 		function loadWaitingRoomHTML() {
-			Quarto.waitingRoom().loadWaitingRoom();
+			Quarto.waitingRoom().start();
 		}
 
 		function loadGameHTML() {
-			Quarto.game().loadGameHTML();
+			Quarto.game().start();
 		};
 
 		function loadRegisterHTML() {
-			Quarto.register().loadRegisterHTML();
+			Quarto.register().start();
 		}
 
 		return {
@@ -27,11 +29,22 @@ var Quarto = {};
 		};
 	});
 
-	$.fn.animateHighlight = function(highlightColor, duration) {
-	    var highlightBg = highlightColor || "#FFFF9C";
-	    var animateMs = duration || 1500;
-	    var originalBg = this.css("backgroundColor");
-	    this.stop().css("background-color", highlightBg).animate({backgroundColor: originalBg}, animateMs);
-	};
+	function unloadLoadedModules() {
+		if (Quarto.chat().isLoaded()) {
+			Quarto.chat().stop();
+		}
+		if (Quarto.register().isLoaded()) {
+			Quarto.register().stop();
+		}
+		if (Quarto.waitingRoom().isLoaded()) {
+			Quarto.waitingRoom().stop();
+		}
+		if (Quarto.game().isLoaded()) {
+			Quarto.game().stop();
+		}
+		if (Quarto.gameUi().isLoaded()) {
+			Quarto.gameUi().stop();
+		}
+	}
 
 })(jQuery);

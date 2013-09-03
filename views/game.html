@@ -1,20 +1,26 @@
 <div id="game-div">	
-	<div class="form-inline room-details">
-		Room Name: <span class="label label-default" id="room-name"></span><br />
-		Player 1: <span class="label label-default" id="player-one"></span><br />
-		Player 2: <span class="label label-default" id="player-two"></span><br />
-		Observers:
+	<div class="form-inline room-details bordered">
+		<h2>Room Name</h2>
+		<div id="room-name"></div>
+		<h2>Player One</h2>
+		<div id="player-one"></div>
+		<h2>Player Two</h2>
+		<div id="player-two"></div>
+		<h2>Observers</h2>
 		<ul id="observers">
 			
 		</ul>
+		<button type="button" class="btn btn-danger bottom">Leave Room</button>
 	</div>
 	<canvas id="canvas">
 	    Your browser doesn't support canvas. Sorry.
 	</canvas>
-	<div class="chat-div" id="chat-div"></div>
-	<div class="form-inline chat-form">
-	    <input class="form-control" type="text" id="chat" style="width: 240px" placeholder="Send a message..." />
-	    <input type="button" class="btn btn-primary btn-sm disabled" id="send" value="Send" />
+	<div class="bordered chat-container">
+		<div class="chat-div" id="chat-div"></div>
+		<div class="form-inline chat-form">
+		    <input class="form-control" type="text" id="chat" style="width: 230px" placeholder="Send a message..." />
+		    <input type="button" class="btn btn-primary btn-sm disabled" id="send" value="Send" />
+		</div>
 	</div>
 	<div id="popup">
 		<span class="button b-close"><span>X</span></span>

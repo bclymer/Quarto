@@ -46,7 +46,9 @@ type UserRoomDTO struct {
 }
 
 type AddRoomDTO struct {
-	Name string
+	Name     string
+	Private  bool
+	Password string
 }
 
 type RemoveRoomDTO struct {
@@ -72,20 +74,43 @@ type RoomPlayerTwoChangedDTO struct {
 
 type RoomObserversChangedDTO struct {
 	Username string
+	Added    bool // was this observer added or removed
 }
 
 type RoomRoomDTO struct { // The room DTO that gets sent to users inside the room
 	Name      string
-	Private   string
+	Private   bool
 	PlayerOne string
 	PlayerTwo string
 	Observers []string
+}
+
+func MakeRoomRoomDTO(room *Room) RoomRoomDTO {
+	observers := make([]string, room.Observers.Len())
+	i := 0
+	for observer := room.Observers.Front(); observer != nil; observer = observer.Next() {
+		observers[i] = observer.Value.(*User).Username
+		i++
+	}
+	playerOneName := ""
+	if room.PlayerOne != nil {
+		playerOneName = room.PlayerOne.Username
+	}
+	playerTwoName := ""
+	if room.PlayerTwo != nil {
+		playerTwoName = room.PlayerTwo.Username
+	}
+	return RoomRoomDTO{room.Name, room.Private, playerOneName, playerTwoName, observers}
 }
 
 type LobbyRoomDTO struct { // The room DTO that users in the lobby get
 	Name    string
 	Private bool
 	Members int
+}
+
+func MakeLobbyRoomDTO(room *Room) LobbyRoomDTO {
+	return LobbyRoomDTO{room.Name, room.Private, room.Observers.Len()}
 }
 
 type LobbyUserDTO struct {
@@ -96,4 +121,13 @@ type LobbyUserDTO struct {
 type ClientEvent struct {
 	Action string
 	Data   string // json encoding of some data
+}
+
+type IncomingChatDTO struct {
+	Message string
+}
+
+type OutgoingChatDTO struct {
+	Message  string
+	Username string
 }

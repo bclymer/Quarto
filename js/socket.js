@@ -1,7 +1,6 @@
 (function ($) {
 
 	var socket;
-	var uuid;
 	var username;
 	
 	Quarto.socket = (function () {
@@ -10,7 +9,7 @@
 			username = requestedUsername;
 			socket = new WebSocket('ws://' + window.location.host + '/realtime?username=' + username);
 			socket.onmessage = function (event) {
-				console.log(event.data);
+				console.log("In: " + event.data);
 				if (!event.data) {
 					return;
 				}
@@ -19,20 +18,17 @@
 					return;
 				}
 				data = JSON.parse(message.Data);
-				console.log("Triggering " + message.Action)
 				$(document).trigger(message.Action, data);
 			};
 		}
 
 		function sendMessage(action, message) {
-			socket.send(JSON.stringify({
+			var serializedMessage = JSON.stringify({
 				Action: action,
 				Data: message
-			}));
-		}
-
-		function getUuid() {
-			return uuid;
+			});
+			console.log("Out: " + serializedMessage);
+			socket.send(serializedMessage);
 		}
 
 		function getUsername() {
@@ -42,15 +38,9 @@
 		return {
 			makeConnection: makeConnection,
 			sendMessage: sendMessage,
-			getUuid: getUuid,
 			getUsername: getUsername,
 		}
 
-	});
-
-	$(document).on(Quarto.constants.uuidAssigned, function (event, data) {
-		console.log("Uuid for session set to " + data.Data);
-		uuid = data.Data;
 	});
 
 

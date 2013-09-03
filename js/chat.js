@@ -5,19 +5,20 @@
 	var chatInput;
 	var chatDiv;
 	var cachedEvents = [];
+	var loaded = false;
 	
 	Quarto.chat = (function() {
 
-		function attachEventsToGamePage() {
+		function start() {
+			loaded = true;
+			console.log("chat start()");
 			chatInput = $('#chat');
 			sendButton = $('#send');
 			chatDiv = $('#chat-div');
 
-			sendButton.click(function () {
+			sendButton.on('click', function () {
 				var chatData = JSON.stringify({
-					username: Quarto.socket().getUsername(),
-					message: chatInput.val(),
-					uuid: Quarto.socket().getUuid(),
+					Message: chatInput.val()
 				});
 				Quarto.socket().sendMessage(Quarto.constants.chat, chatData);
 				scrollChatToBottom();
@@ -31,7 +32,7 @@
 				}
 			});
 
-			chatInput.keyup(function (e) {
+			chatInput.on('keyup', function (e) {
 				if (chatInput.val().length > 0) {
 					sendButton.removeClass("disabled");
 				} else {
@@ -43,52 +44,77 @@
 				applyMessage(data);
 			});
 			cachedEvents = [];
+
+			$(document).on('keydown', function(event) {
+				if (chatInput) {
+					chatInput.focus();
+				}
+			});
+
+			$(document).on(Quarto.constants.chat, function (event, data) {
+				if (!chatDiv) {
+					cachedEvents.push(data)
+					return;
+				} else {
+					applyMessage(data);
+				}
+			});
+
+			$(document).on(Quarto.constants.joinedRoom, function (event, data) {
+				if (!chatDiv) return;
+				chatDiv.append(chatTemplate.replace("{0}", "System").replace("{1}", data.Message + " joined the room.").replace("{2}", "opponent"));
+			});
+
+			$(document).on(Quarto.constants.leftRoom, function (event, data) {
+				if (!chatDiv) return;
+				chatDiv.append(chatTemplate.replace("{0}", "System").replace("{1}", data.Message + " left the room.").replace("{2}", "opponent"));
+			});
+		}
+
+		function stop() {
+			chatInput.off();
+			sendButton.off();
+			chatDiv.off();
+			$(document).off('keydown');
+			$(document).off(Quarto.constants.chat);
+			$(document).off(Quarto.constants.joinedRoom);
+			$(document).off(Quarto.constants.leftRoom);
+
+			cachedEvents = [];
+			chatInput = undefined;
+			sendButton = undefined;
+			chatDiv = undefined;
+			loaded = false;
+			console.log("chat stop()");
+		}
+
+		function isLoaded() {
+			return loaded;
 		}
 
 		return {
-			attachEventsToGamePage: attachEventsToGamePage
+			start: start,
+			stop: stop,
+			isLoaded: isLoaded,
 		}
 
-	});
-
-	$(document).on("keydown", function (event) {
-		if (chatInput) {
-			chatInput.focus();
-		}
-	});
-
-	$(document).on(Quarto.constants.chat, function (event, data) {
-		if (!chatDiv) {
-			cachedEvents.push(data)
-			return;
-		} else {
-			applyMessage(data);
-		}
 	});
 
 	function applyMessage(data) {
-		var chatData = JSON.parse(data.Data);
-		if (chatData.uuid == Quarto.socket().getUuid()) {
-			chatDiv.append(chatTemplate.replace("{0}", "You").replace("{1}", chatData.message).replace("{2}", "you"));
+		if (!chatDiv) return;
+		
+		if (data.Username == Quarto.socket().getUsername()) {
+			chatDiv.append(chatTemplate.replace("{0}", "You").replace("{1}", data.Message).replace("{2}", "you"));
 		} else {
-			chatDiv.append(chatTemplate.replace("{0}", chatData.username).replace("{1}", chatData.message).replace("{2}", "opponent"));
+			chatDiv.append(chatTemplate.replace("{0}", data.Username).replace("{1}", data.Message).replace("{2}", "opponent"));
 		}
 		scrollChatToBottom();
 	}
 
 	function scrollChatToBottom() {
+		if (!chatDiv) return;
 		var chatDiv = document.getElementById("chat-div");
 		chatDiv.scrollTop = chatDiv.scrollHeight;
 	}
-
-	$(document).on(Quarto.constants.joinedRoom, function (event, data) {
-		if (!chatDiv) return;
-		chatDiv.append(chatTemplate.replace("{0}", "System").replace("{1}", data.Data + " joined the room.").replace("{2}", "opponent"));
-	});
-
-	$(document).on(Quarto.constants.leftRoom, function (event, data) {
-		if (!chatDiv) return;
-		chatDiv.append(chatTemplate.replace("{0}", "System").replace("{1}", data.Data + " left the room.").replace("{2}", "opponent"));
-	});
 
 })(jQuery);

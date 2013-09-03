@@ -13,5 +13,6 @@ var (
 	ChangeRoomPlayerOne = "com.bclymer.quarto.room.changePlayerOne"
 	ChangeRoomPlayerTwo = "com.bclymer.quarto.room.changePlayerTwo"
 	ChangeRoomObservers = "com.bclymer.quarto.room.changeObservers"
+	ChangeRoom          = "com.bclymer.quarto.room.change"
 	Chat                = "com.bclymer.quarto.chat"
 )
