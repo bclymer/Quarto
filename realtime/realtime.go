@@ -24,7 +24,6 @@ type RecievedEvent struct {
 // Owner must cancel itself when they stop listening to events.
 func (user *User) Cancel() {
 	log.Println("+realtime.Cancel")
-	close(user.Events)
 	removeUserDTO, err := json.Marshal(RemoveUserDTO{user.Username})
 	if err != nil {
 		log.Fatal("Cancel: Couldn't marshal the thing")
@@ -112,7 +111,7 @@ func realtime() {
 			case constants.JoinRoom:
 				JoinRoom(clientEvent.Data, username, userMap, roomMap)
 			case constants.LeaveRoom:
-				LeaveRoom(clientEvent.Data, username, userMap, roomMap)
+				LeaveRoom(username, userMap, roomMap)
 			case constants.AddRoom:
 				AddRoom(clientEvent.Data, username, userMap, roomMap)
 			case constants.RemoveRoom:
@@ -129,6 +128,14 @@ func realtime() {
 				RoomObserversChanged(clientEvent.Data)
 			case constants.Chat:
 				Chat(clientEvent.Data, username, userMap, roomMap)
+			case constants.RequestPlayerOne:
+				RequestPlayerOne(username, userMap, roomMap)
+			case constants.RequestPlayerTwo:
+				RequestPlayerTwo(username, userMap, roomMap)
+			case constants.LeavePlayerOne:
+				LeavePlayerOne(username, userMap, roomMap)
+			case constants.LeavePlayerTwo:
+				LeavePlayerTwo(username, userMap, roomMap)
 			}
 			log.Println("-recievedEventChannel")
 		case check := <-checkUsernameChannel:

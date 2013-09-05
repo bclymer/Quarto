@@ -18,7 +18,7 @@
 			private = $('#private');
 			observers = $('#observers');
 
-            $(document).on(Quarto.constants.changeRoom, function (event, data) {
+            $(document).on(Quarto.constants.roomChange, function (event, data) {
                 roomName.text(data.Name);
                 if (!data.PlayerOne) {
                 	playerOne.html('<button type="button" class="btn btn-primary" id="request-player-one">Dibs!</button>');
@@ -40,6 +40,26 @@
                 	observers.append('<li>' + observer + '</li>')
                 });
             });
+
+			$('#game-div').on('click', '#request-player-one', function () {
+				Quarto.socket().sendMessage(Quarto.constants.gamePlayerOneRequest);
+			});
+
+			$('#game-div').on('click', '#request-player-two', function () {
+				Quarto.socket().sendMessage(Quarto.constants.gamePlayerTwoRequest);
+			});
+
+			$('#game-div').on('click', '#leave-player-one', function () {
+				Quarto.socket().sendMessage(Quarto.constants.gamePlayerOneLeave);
+			});
+
+			$('#game-div').on('click', '#leave-player-two', function () {
+				Quarto.socket().sendMessage(Quarto.constants.gamePlayerTwoLeave);
+			});
+
+			$('#leave-room').on('click', function () {
+				Quarto.main().loadWaitingRoomHTML();
+			});
 		}
 
 		function stop() {
@@ -48,7 +68,9 @@
 			playerTwo = undefined;
 			private = undefined;
 			observers = undefined;
-			$(document).off(Quarto.constants.changeRoom);
+			$(document).off(Quarto.constants.roomChange);
+			$('#game-div').off('click');
+			$('#leave-room').off('click');
 			loaded = false;
 			console.log("gameUi stop()");
 		}

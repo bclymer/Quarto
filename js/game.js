@@ -52,13 +52,13 @@
             loaded = true;
             console.log("game start()");
             $('#game-div').show();
-            $('body').animate({backgroundColor: "#EEEEEE"}, 500);
+            $('body').animate({backgroundColor: '#EEEEEE'}, 500);
             Quarto.chat().start();
             Quarto.gameUi().start();
             
             var canvasElement = $('canvas');
-            context = canvasElement.get(0).getContext("2d");
-            context.canvas.addEventListener("mousedown", mouseClick, false);
+            context = canvasElement.get(0).getContext('2d');
+            context.canvas.addEventListener('mousedown', mouseClick, false);
 
             resetState();
 
@@ -69,7 +69,7 @@
             function mouseClick(event) {
                 for (var i = 0; i < drawnObjects.length; i++) {
                     var object = drawnObjects[i];
-                    if (object.containsPoint(event.x, event.y)) {
+                    if (object.containsPoint(event.x - 300, event.y)) {
                         if (object.onClick) {
                             object.onClick(object);
                         }
@@ -77,13 +77,13 @@
                 }
             }
 
-            $(document).on("accept", function (event, data) {
+            $(document).on('accept', function (event, data) {
                 gameState = game_state_choosing_piece;
                 resetState();
                 draw();
             });
 
-            $(document).on("chosen", function (event, data) {
+            $(document).on('chosen', function (event, data) {
                 var pieceId = parseInt(data.data);
                 selectedPiece = pieceId;
 
@@ -99,9 +99,13 @@
                 pieceChosen(piece);
             });
 
-            $(document).on("placed", function (event, data) {
+            $(document).on('placed', function (event, data) {
                 gameState = game_state_waiting_for_piece;
                 locationChosen(data.data);
+            });
+
+            $(document).on(Quarto.constants.gameChange, function (event, data) {
+
             });
 
             $(window).on('resize', function () {
@@ -114,8 +118,9 @@
         function stop() {
             $(window).off('resize');
             $('#game-div').hide();
-            $(document).off(Quarto.constants.joinRoom)
-                        .off(Quarto.constants.leaveRoom);
+            $(document).off(Quarto.constants.userJoinRoom)
+                        .off(Quarto.constants.userLeaveRoom);
+            Quarto.socket().sendMessage(Quarto.constants.userLeaveRoom, "");
             loaded = false;
             console.log("game stop()");
         }
@@ -224,7 +229,7 @@
         drawnObjects = [];
         boardLocations = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
 
-        drawnObjects[0] = new DrawnObject(0, 0, shape_circle, 1);
+        drawnObjects[0] = new DrawnObject(0.26, 0, shape_circle, 1);
         for (var i = 0; i < 16; i++) {
             var coordinates = getLocationXandY(i);
             drawnObjects[i + 1] = new DrawnObject(coordinates[0], coordinates[1], shape_circle, smallSize, i,
@@ -240,7 +245,7 @@
                 });
         }
 
-        var x = -0.87, y = -0.87, z = 0;
+        var x = -1.13, y = -0.87, z = 0;
         for (var i = 0; i < availablePieces.length; i++) {
             var pieceId = availablePieces[i];
             var piece = possiblePieces[pieceId];
@@ -276,7 +281,7 @@
 
     function draw() {
         context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-        fullRadius = Math.min(context.canvas.width / 2, context.canvas.height / 2);
+        fullRadius = Math.min(context.canvas.width / 1.26 / 2, context.canvas.height / 2);
 
         context.lineWidth = fullRadius / 95.5;
         context.strokeStyle = '#003300';
@@ -286,33 +291,6 @@
             drawnObjects[i].draw();
             context.stroke();
         }
-
-        var x = 0;
-
-        var text;
-        switch (gameState) {
-            case game_state_no_player:
-            text = "Waiting for player to join";
-            x = context.canvas.width - 200;
-            break;
-            case game_state_choosing_piece:
-            text = "You are choosing a piece";
-            x = context.canvas.width - 190;
-            break;
-            case game_state_playing_piece:
-            text = "You are playing a piece";
-            x = context.canvas.width - 185;
-            break;
-            case game_state_waiting_for_piece:
-            text = "Waiting for piece from opponent";
-            x = context.canvas.width - 230;
-            break;
-            case game_state_waiting_for_play:
-            text = "Waiting for opponent to play";
-            x = context.canvas.width - 215;
-            break;
-        }
-        context.fillText("GameState: " + text, x, 10);
     }
 
     function checkForWinner() {
@@ -406,8 +384,8 @@
     }
 
     function getLocationXandY(location) {
-        var loc = privateGetLocationXandY(location);
-        return [loc[0], loc[1]];
+        loc = privateGetLocationXandY(location);
+        return [loc[0] + 0.26, loc[1]];
     }
 
     function privateGetLocationXandY(location) {
