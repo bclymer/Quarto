@@ -1,9 +1,15 @@
-var Quarto = {};
-
 (function ($) {
 
 	$(document).ready(function () {
 		Quarto.main().loadRegisterHTML();
+	});
+
+	$(document).on(Quarto.constants.Info, function (event, data) {
+		toastr.info(data.Message);
+	});
+
+	$(document).on(Quarto.constants.Error, function (event, data) {
+		toastr.error(data.Message);
 	});
 
 	Quarto.main = (function() {

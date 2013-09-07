@@ -28,7 +28,7 @@ func (user *User) Cancel() {
 	if err != nil {
 		log.Fatal("Cancel: Couldn't marshal the thing")
 	}
-	clientEvent := ClientEvent{constants.RemoveUser, string(removeUserDTO)}
+	clientEvent := ClientEvent{constants.Config.UserRemove, string(removeUserDTO)}
 	recievedEvent := RecievedEvent{clientEvent, user.Username}
 	recievedEventChannel <- &recievedEvent
 	log.Println("-realtime.Cancel")
@@ -85,6 +85,8 @@ func realtime() {
 	userMap := make(map[string]*User)
 	roomMap := make(map[string]*Room)
 
+	setupEventProcessor(&userMap, &roomMap)
+
 	for {
 		select {
 		case newUserInfoAndChannel := <-subscribeChannel:
@@ -94,7 +96,7 @@ func realtime() {
 				log.Fatal("realtime: Couldn't marshal the thing")
 				return
 			}
-			user := AddUser(string(addUserDTO), userMap)
+			user := AddUser(string(addUserDTO))
 			newUserInfoAndChannel.User <- user
 			log.Println("-subscribeChannel")
 		case recievedEvent := <-recievedEventChannel:
@@ -102,40 +104,38 @@ func realtime() {
 			clientEvent := recievedEvent.clientEvent
 			username := recievedEvent.Username
 			switch clientEvent.Action {
-			case constants.AddUser:
-				AddUser(clientEvent.Data, userMap)
-			case constants.RemoveUser:
-				RemoveUser(clientEvent.Data, userMap, roomMap)
-			case constants.UserChallenge:
+			case constants.Config.UserAdd:
+				AddUser(clientEvent.Data)
+			case constants.Config.UserRemove:
+				RemoveUser(clientEvent.Data)
+			case constants.Config.UserChallenge:
 				UserChallengedUser(clientEvent.Data, username)
-			case constants.JoinRoom:
-				JoinRoom(clientEvent.Data, username, userMap, roomMap)
-			case constants.LeaveRoom:
-				LeaveRoom(username, userMap, roomMap)
-			case constants.AddRoom:
-				AddRoom(clientEvent.Data, username, userMap, roomMap)
-			case constants.RemoveRoom:
+			case constants.Config.UserRoomJoin:
+				JoinRoom(clientEvent.Data, username)
+			case constants.Config.UserRoomLeave:
+				LeaveRoom(username)
+			case constants.Config.RoomAdd:
+				AddRoom(clientEvent.Data, username)
+			case constants.Config.RoomRemove:
 				RemoveRoom(clientEvent.Data)
-			case constants.ChangeRoomName:
+			case constants.Config.RoomNameChange:
 				RoomNameChange(clientEvent.Data)
-			case constants.ChangeRoomPrivacy:
+			case constants.Config.RoomPrivacyChange:
 				RoomNameChange(clientEvent.Data)
-			case constants.ChangeRoomPlayerOne:
-				RoomPlayerOneChanged(clientEvent.Data)
-			case constants.ChangeRoomPlayerTwo:
-				RoomPlayerTwoChanged(clientEvent.Data)
-			case constants.ChangeRoomObservers:
-				RoomObserversChanged(clientEvent.Data)
-			case constants.Chat:
-				Chat(clientEvent.Data, username, userMap, roomMap)
-			case constants.RequestPlayerOne:
-				RequestPlayerOne(username, userMap, roomMap)
-			case constants.RequestPlayerTwo:
-				RequestPlayerTwo(username, userMap, roomMap)
-			case constants.LeavePlayerOne:
-				LeavePlayerOne(username, userMap, roomMap)
-			case constants.LeavePlayerTwo:
-				LeavePlayerTwo(username, userMap, roomMap)
+			case constants.Config.Chat:
+				Chat(clientEvent.Data, username)
+			case constants.Config.GamePlayerOneRequest:
+				RequestPlayerOne(username)
+			case constants.Config.GamePlayerTwoRequest:
+				RequestPlayerTwo(username)
+			case constants.Config.GamePlayerOneLeave:
+				LeavePlayerOne(username)
+			case constants.Config.GamePlayerTwoLeave:
+				LeavePlayerTwo(username)
+			case constants.Config.GamePiecePlayed:
+				GamePiecePlayed(clientEvent.Data, username)
+			case constants.Config.GamePieceChosen:
+				GamePieceChosen(clientEvent.Data, username)
 			}
 			log.Println("-recievedEventChannel")
 		case check := <-checkUsernameChannel:

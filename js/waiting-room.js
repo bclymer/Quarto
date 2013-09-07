@@ -43,7 +43,7 @@
 					var room = JSON.stringify({
 						Name: $(this).data('room-name')
 					})
-					Quarto.socket().sendMessage(Quarto.constants.userJoinRoom, room);
+					Quarto.socket().sendMessage(Quarto.constants.UserRoomJoin, room);
 					Quarto.main().loadGameHTML();
 
 					event.preventDefault();
@@ -68,11 +68,11 @@
 					Password: ""
 				});
 
-				Quarto.socket().sendMessage(Quarto.constants.roomAdd, room);
+				Quarto.socket().sendMessage(Quarto.constants.RoomAdd, room);
 				Quarto.main().loadGameHTML();
 			});
 
-			$(document).on(Quarto.constants.roomAdd, function(event, room) {
+			$(document).on(Quarto.constants.RoomAdd, function(event, room) {
 				if ($('#rooms-table [data-room-name="' + room.Name + '"]').length > 0) return;
 
 				var newRow = $(roomRowConstant.replace('{RoomName}', room.Name)
@@ -84,7 +84,7 @@
 				newRow.find('div').hide().slideDown();
 			});
 
-			$(document).on(Quarto.constants.roomChange, function(event, room) {
+			$(document).on(Quarto.constants.RoomChange, function(event, room) {
 				var changedRow = $('#rooms-table [data-room-name="' + room.Name + '"]');
 
 				changedRow.empty().html(roomRowConstant.replace('{RoomName}', room.Name)
@@ -95,14 +95,14 @@
 				$(changedRow).animateHighlight("#dd0000", 1000);
 			});
 
-			$(document).on(Quarto.constants.roomRemove, function(event, user) {
+			$(document).on(Quarto.constants.RoomRemove, function(event, user) {
 				var changedRow = $('#rooms-table [data-room-name="' + room.Name + '"]');
 				changedRow.slideUp(function() {
 					changedRow.remove();
 				});
 			});
 
-			$(document).on(Quarto.constants.userJoinRoom, function(event, userRoom) {
+			$(document).on(Quarto.constants.UserRoomJoin, function(event, userRoom) {
 				var changedRow = $('#users-table [data-user-name="' + userRoom.Username + '"]');
 				$(changedRow.find('td')[2]).html(userRoom.RoomName);
 		        changedRow.animate({backgroundColor: "#dd0000"}, 500, function () {
@@ -110,7 +110,7 @@
 		        });
 			});
 
-			$(document).on(Quarto.constants.userAdd, function(event, user) {
+			$(document).on(Quarto.constants.UserAdd, function(event, user) {
 				if ($('#users-table [data-user-name="' + user.Username + '"]').length > 0) return;
 
 				var newRow = $(userRowConstant.replace('{Username}', user.Username)
@@ -121,7 +121,7 @@
 				newRow.find('div').hide().slideDown();
 			});
 
-			$(document).on(Quarto.constants.userRemove, function(event, user) {
+			$(document).on(Quarto.constants.UserRemove, function(event, user) {
 				var changedRow = $('#users-table [data-user-name="' + user.Username + '"]');
 				changedRow.find('div').slideUp(function() {
 					changedRow.remove();
@@ -134,12 +134,12 @@
 			$('#rooms-table').off('click');
 			$('#create-new-room').off('click');
 			$('#waiting-room').hide();
-			$(document).off(Quarto.constants.roomAdd)
-						.off(Quarto.constants.roomChange)
-						.off(Quarto.constants.roomRemove)
-						.off(Quarto.constants.userJoinRoom)
-						.off(Quarto.constants.userAdd)
-						.off(Quarto.constants.userRemove);
+			$(document).off(Quarto.constants.RoomAdd)
+						.off(Quarto.constants.RoomChange)
+						.off(Quarto.constants.RoomRemove)
+						.off(Quarto.constants.UserRoomJoin)
+						.off(Quarto.constants.UserAdd)
+						.off(Quarto.constants.UserRemove);
 			loaded = false;
 			console.log("waitingRoom stop()");
 		}

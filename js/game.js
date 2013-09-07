@@ -10,11 +10,11 @@
     var context;
     var gameState = 0;
 
-    var game_state_no_player = 0;
-    var game_state_waiting_for_piece = 1;
-    var game_state_playing_piece = 2;
-    var game_state_choosing_piece = 3;
-    var game_state_waiting_for_play = 4;
+    var gameStateNoPlayers         = 0
+    var gameStatePlayerOneChoosing = 1
+    var gameStatePlayerOnePlaying  = 2
+    var gameStatePlayerTwoChoosing = 3
+    var gameStatePlayerTwoPlaying  = 4
 
     var shape_circle = 1;
     var shape_square = 2;
@@ -41,10 +41,8 @@
         { square: false, hole: false, white: false, tall: false }
     ];
 
-    var usedPieces = [];
-
+    var usedPieces = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
     var availablePieces = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-
     var boardLocations = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
 
     Quarto.game = (function () {
@@ -77,35 +75,16 @@
                 }
             }
 
-            $(document).on('accept', function (event, data) {
-                gameState = game_state_choosing_piece;
-                resetState();
-                draw();
-            });
-
-            $(document).on('chosen', function (event, data) {
-                var pieceId = parseInt(data.data);
-                selectedPiece = pieceId;
-
-                var piece;
-                for (var i = 0; i < drawnObjects.length; i++) {
-                    if (drawnObjects[i].shape == 3 && drawnObjects[i].data.pieceId == pieceId) {
-                        piece = drawnObjects[i];
-                        break;
-                    }
+            $(document).on(Quarto.constants.GameChange, function (event, data) {
+                gameState = data.GameState;
+                if (gameState == gameStateNoPlayers) {
+                    resetState();
                 }
-
-                gameState = game_state_playing_piece;
-                pieceChosen(piece);
-            });
-
-            $(document).on('placed', function (event, data) {
-                gameState = game_state_waiting_for_piece;
-                locationChosen(data.data);
-            });
-
-            $(document).on(Quarto.constants.gameChange, function (event, data) {
-
+                availablePieces = data.AvailablePieces;
+                usedPieces = data.UsedPieces;
+                boardLocations = data.Board;
+                selectedPiece = data.SelectedPiece;
+                draw();
             });
 
             $(window).on('resize', function () {
@@ -118,9 +97,10 @@
         function stop() {
             $(window).off('resize');
             $('#game-div').hide();
-            $(document).off(Quarto.constants.userJoinRoom)
-                        .off(Quarto.constants.userLeaveRoom);
-            Quarto.socket().sendMessage(Quarto.constants.userLeaveRoom, "");
+            $(document).off(Quarto.constants.UserRoomJoin)
+                        .off(Quarto.constants.UserRoomLeave)
+                        .off(Quarto.constants.GameChange);
+            Quarto.socket().sendMessage(Quarto.constants.UserRoomLeave, "");
             loaded = false;
             console.log("game stop()");
         }
@@ -225,24 +205,27 @@
     }
 
     function resetState() {
-        usedPieces = [];
         drawnObjects = [];
+        usedPieces = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
         boardLocations = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
+        availablePieces = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 
         drawnObjects[0] = new DrawnObject(0.26, 0, shape_circle, 1);
         for (var i = 0; i < 16; i++) {
             var coordinates = getLocationXandY(i);
             drawnObjects[i + 1] = new DrawnObject(coordinates[0], coordinates[1], shape_circle, smallSize, i,
                 function (object) {
-                    if (gameState == game_state_playing_piece) {
-                        if (boardLocations[object.data] != -1) {
-                            return;
-                        }
-                        gameState = game_state_choosing_piece;
-                        locationChosen(object.data);
-                        Quarto.socket().sendMessage("placed", object.data);
-                    }
-                });
+                    //if (gameState == gameStatePlayerOnePlaying || gameState == gameStatePlayerTwoPlaying) {
+                        //if (boardLocations[object.data] != -1) {
+                            //return;
+                        //}
+                        var locationData = JSON.stringify({
+                            Location: object.data
+                        });
+                        Quarto.socket().sendMessage(Quarto.constants.GamePiecePlayed, locationData);
+                    //}
+                }
+            );
         }
 
         var x = -1.13, y = -0.87, z = 0;
@@ -259,17 +242,16 @@
                     pieceId: pieceId
                 },
                 function (object) {
-                    if (gameState == game_state_choosing_piece) {
-                        if (selectedPiece == -1 && usedPieces.indexOf(object.data.pieceId) == -1) {
-                            gameState = game_state_waiting_for_play;
-                            pieceChosen(object);
-                            selectedPiece = object.data.pieceId;
-                            console.log("send: " + selectedPiece);
-                            Quarto.socket().sendMessage("chosen", selectedPiece);
-                        }
-                    }
+                    //if (gameState == gameStatePlayerOneChoosing || gameState == gameStatePlayerTwoChoosing) {
+                        //if (selectedPiece == -1 && usedPieces.indexOf(object.data.pieceId) == -1) {
+                            var pieceData = JSON.stringify({
+                                Piece: object.data.pieceId
+                            });
+                            Quarto.socket().sendMessage(Quarto.constants.GamePieceChosen, pieceData);
+                        //}
+                    //}
                 }
-                );
+            );
 
             y += 0.25;
             if (++z == 8) {

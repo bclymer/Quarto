@@ -2,6 +2,7 @@ package realtime
 
 import (
 	"container/list"
+	"encoding/json"
 )
 
 type Room struct {
@@ -12,6 +13,7 @@ type Room struct {
 	Name      string
 	Private   bool
 	Password  string // only used if the room is private
+	Game      *Game
 }
 
 type User struct {
@@ -62,19 +64,6 @@ type RoomPrivacyChangedDTO struct {
 
 type RoomNameChangedDTO struct {
 	Name string
-}
-
-type RoomPlayerOneChangedDTO struct {
-	Username string
-}
-
-type RoomPlayerTwoChangedDTO struct {
-	Username string
-}
-
-type RoomObserversChangedDTO struct {
-	Username string
-	Added    bool // was this observer added or removed
 }
 
 type RoomRoomDTO struct { // The room DTO that gets sent to users inside the room
@@ -130,4 +119,24 @@ type IncomingChatDTO struct {
 type OutgoingChatDTO struct {
 	Message  string
 	Username string
+}
+
+type GamePiecePlayedDTO struct {
+	Location int
+}
+
+type GamePieceChosenDTO struct {
+	Piece int
+}
+
+type InfoOrErrorMessageDTO struct {
+	Message string
+}
+
+func DtoToString(thing interface{}) (string, error) {
+	thingByteArray, err := json.Marshal(thing)
+	if err != nil {
+		return "", err
+	}
+	return string(thingByteArray), err
 }

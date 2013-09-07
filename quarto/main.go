@@ -8,8 +8,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"quarto/constants"
 	"quarto/realtime"
-	"time"
+	"strings"
 )
 
 type Page struct {
@@ -80,11 +81,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func validateUsername(w http.ResponseWriter, r *http.Request) {
 	log.Println("main.validateUsername")
 	valid := realtime.ValidateUsername(r.FormValue("uuid"))
-	test := Success{valid}
+	test := Success{Valid: valid}
 	response, _ := json.Marshal(test)
-	expire := time.Now().AddDate(0, 0, 1)
-	cookie := http.Cookie{"test", "tcookie", "/", "localhost:8080", expire, expire.Format(time.UnixDate), 86400, true, true, "test=tcookie", []string{"test=tcookie"}}
-	http.SetCookie(w, &cookie)
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(w, string(response))
 }
@@ -120,11 +118,27 @@ func users(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(serializedUsers))
 }
 
+type config struct {
+	Config string
+}
+
+func configJs(w http.ResponseWriter, r *http.Request) {
+	t := template.New("")
+	t, _ = t.Parse(conficJs)
+	constants.Init()
+	constantsStr, _ := json.Marshal(constants.Config)
+	w.Header().Set("Content-Type", "text/javascript")
+	fmt.Fprint(w, strings.Replace(conficJs, "{{Config}}", string(constantsStr), -1))
+}
+
+const conficJs = `(function () {
+	Quarto.constants = {{Config}};
+})();
+`
+
 func test(w http.ResponseWriter, r *http.Request) {
-	test, _ := http.Get("http://www.bclymer.com")
-	defer test.Body.Close()
-	body, _ := ioutil.ReadAll(test.Body)
-	fmt.Fprint(w, string(body))
+	http.SetCookie(w, &http.Cookie{Name: "cookie-1", Value: "one"})
+	fmt.Fprint(w, "Yup")
 }
 
 func main() {
@@ -133,6 +147,7 @@ func main() {
 	http.HandleFunc("/rooms", rooms)
 	http.HandleFunc("/users", users)
 	http.HandleFunc("/test", test)
+	http.HandleFunc("/js/constants.js", configJs)
 	http.Handle("/realtime", websocket.Handler(realtimeHost))
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("../js"))))
 	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("../css"))))

@@ -52,7 +52,4 @@
 		}
 	});
 
-	function attachEventsToRegisterPage() {
-	}
-
 })(jQuery);

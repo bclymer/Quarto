@@ -1,18 +1,53 @@
 package constants
 
 var (
-	AddUser             = "com.bclymer.quarto.user.add"
-	RemoveUser          = "com.bclymer.quarto.user.remove"
-	UserChallenge       = "com.bclymer.quarto.user.challenge"
-	JoinRoom            = "com.bclymer.quarto.room.join"
-	LeaveRoom           = "com.bclymer.quarto.room.leave"
-	AddRoom             = "com.bclymer.quarto.room.add"
-	RemoveRoom          = "com.bclymer.quarto.room.remove"
-	ChangeRoomName      = "com.bclymer.quarto.room.changeName"
-	ChangeRoomPrivacy   = "com.bclymer.quarto.room.changePrivacy"
-	ChangeRoomPlayerOne = "com.bclymer.quarto.room.changePlayerOne"
-	ChangeRoomPlayerTwo = "com.bclymer.quarto.room.changePlayerTwo"
-	ChangeRoomObservers = "com.bclymer.quarto.room.changeObservers"
-	ChangeRoom          = "com.bclymer.quarto.room.change"
-	Chat                = "com.bclymer.quarto.chat"
+	Config ConfigContainer
 )
+
+func Init() {
+	Config = ConfigContainer{
+	"com.bclymer.quarto.user.add",
+	"com.bclymer.quarto.user.remove",
+	"com.bclymer.quarto.user.challenge",
+	"com.bclymer.quarto.user.room.join",
+	"com.bclymer.quarto.user.room.leave",
+	"com.bclymer.quarto.room.add",
+	"com.bclymer.quarto.room.remove",
+	"com.bclymer.quarto.room.name.change",
+	"com.bclymer.quarto.room.privacy.change",
+	"com.bclymer.quarto.room.change",
+	"com.bclymer.quarto.chat",
+	"com.bclymer.quarto.game.playerOne.request",
+	"com.bclymer.quarto.game.playerOne.leave",
+	"com.bclymer.quarto.game.playerTwo.request",
+	"com.bclymer.quarto.game.playerTwo.leave",
+	"com.bclymer.quarto.game.change",
+	"com.bclymer.quarto.game.piece.played",
+	"com.bclymer.quarto.game.piece.chosen",
+	"com.bclymer.quarto.info",
+	"com.bclymer.quarto.error"}
+}
+
+type ConfigContainer struct {
+	UserAdd string
+	UserRemove string
+	UserChallenge string
+	UserRoomJoin string
+	UserRoomLeave string
+	RoomAdd string
+	RoomRemove string
+	RoomNameChange string
+	RoomPrivacyChange string
+	RoomChange string
+	Chat string
+	GamePlayerOneRequest string
+	GamePlayerOneLeave string
+	GamePlayerTwoRequest string
+	GamePlayerTwoLeave string
+	GameChange string
+	GamePiecePlayed string
+	GamePieceChosen string
+	Info string
+	Error string
+}
+

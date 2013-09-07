@@ -20,7 +20,7 @@
 				var chatData = JSON.stringify({
 					Message: chatInput.val()
 				});
-				Quarto.socket().sendMessage(Quarto.constants.chat, chatData);
+				Quarto.socket().sendMessage(Quarto.constants.Chat, chatData);
 				scrollChatToBottom();
 				chatInput.val("");
 			});
@@ -51,7 +51,9 @@
 				}
 			});
 
-			$(document).on(Quarto.constants.chat, function (event, data) {
+			$(document).on(Quarto.constants.Chat, function (event, data) {
+				data.Message = _.escape(data.Message);
+				data.Username = _.escape(data.Username);
 				if (!chatDiv) {
 					cachedEvents.push(data)
 					return;
@@ -60,12 +62,12 @@
 				}
 			});
 
-			$(document).on(Quarto.constants.joinedRoom, function (event, data) {
+			$(document).on(Quarto.constants.UserRoomJoin, function (event, data) {
 				if (!chatDiv) return;
 				chatDiv.append(chatTemplate.replace("{0}", "System").replace("{1}", data.Message + " joined the room.").replace("{2}", "opponent"));
 			});
 
-			$(document).on(Quarto.constants.leftRoom, function (event, data) {
+			$(document).on(Quarto.constants.UserRoomLeave, function (event, data) {
 				if (!chatDiv) return;
 				chatDiv.append(chatTemplate.replace("{0}", "System").replace("{1}", data.Message + " left the room.").replace("{2}", "opponent"));
 			});
@@ -76,9 +78,9 @@
 			sendButton.off();
 			chatDiv.off();
 			$(document).off('keydown');
-			$(document).off(Quarto.constants.chat);
-			$(document).off(Quarto.constants.joinedRoom);
-			$(document).off(Quarto.constants.leftRoom);
+			$(document).off(Quarto.constants.Chat);
+			$(document).off(Quarto.constants.UserRoomJoin);
+			$(document).off(Quarto.constants.UserRoomLeave);
 
 			cachedEvents = [];
 			chatInput = undefined;

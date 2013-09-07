@@ -7,7 +7,17 @@ import (
 	"quarto/constants"
 )
 
-func AddUser(addUserMessage string, userMap map[string]*User) *User {
+var (
+	userMap map[string]*User
+	roomMap map[string]*Room
+)
+
+func setupEventProcessor(users *map[string]*User, rooms *map[string]*Room) {
+	userMap = *users
+	roomMap = *rooms
+}
+
+func AddUser(addUserMessage string) *User {
 	log.Println("+AddUser")
 	var addUserDTO AddUserDTO
 	err := json.Unmarshal([]byte(addUserMessage), &addUserDTO)
@@ -19,14 +29,14 @@ func AddUser(addUserMessage string, userMap map[string]*User) *User {
 
 	userMap[addUserDTO.Username] = &user
 
-	clientEvent := ClientEvent{constants.AddUser, addUserMessage}
+	clientEvent := ClientEvent{constants.Config.UserAdd, addUserMessage}
 
-	sendEventToLobby(&clientEvent, userMap)
+	sendEventToLobby(&clientEvent)
 	log.Println("-AddUser")
 	return &user
 }
 
-func RemoveUser(removeUserMessage string, userMap map[string]*User, roomMap map[string]*Room) {
+func RemoveUser(removeUserMessage string) {
 	log.Println("+RemoveUser")
 	var removeUserDTO RemoveUserDTO
 	err := json.Unmarshal([]byte(removeUserMessage), &removeUserDTO)
@@ -34,15 +44,18 @@ func RemoveUser(removeUserMessage string, userMap map[string]*User, roomMap map[
 		log.Println("RemoveUser: Couldn't unmarshal", removeUserMessage)
 		return
 	}
-	clientEvent := ClientEvent{constants.RemoveUser, removeUserMessage}
+	clientEvent := ClientEvent{constants.Config.UserRemove, removeUserMessage}
 
-	user := userMap[removeUserDTO.Username]
+	user, ok := userMap[removeUserDTO.Username]
+	if !ok {
+		log.Println("Remove User: User didn't exist")
+	}
 
 	if user.Room != nil {
-		LeaveRoom(removeUserDTO.Username, userMap, roomMap)
+		LeaveRoom(removeUserDTO.Username)
 	}
 	delete(userMap, removeUserDTO.Username)
-	sendEventToLobby(&clientEvent, userMap)
+	sendEventToLobby(&clientEvent)
 	close(user.Events)
 	log.Println("-RemoveUser")
 }
@@ -51,7 +64,7 @@ func UserChallengedUser(userChallengedUser, username string) {
 
 }
 
-func JoinRoom(joinRoomMessage, username string, userMap map[string]*User, roomMap map[string]*Room) {
+func JoinRoom(joinRoomMessage, username string) {
 	log.Println("+JoinRoom")
 	var joinRoomDTO JoinRoomDTO
 	err := json.Unmarshal([]byte(joinRoomMessage), &joinRoomDTO)
@@ -76,69 +89,74 @@ func JoinRoom(joinRoomMessage, username string, userMap map[string]*User, roomMa
 	userRoomString, err := DtoToString(UserRoomDTO{username, room.Name})
 	if err != nil {
 		log.Println("JoinRoom: Couldn't marshal.", err)
+		sendErrorToUser(user, "")
 		return
 	}
-	lobbyUserEvent := ClientEvent{constants.JoinRoom, userRoomString}
-	sendEventToLobby(&lobbyUserEvent, userMap)
+
+	lobbyUserEvent := ClientEvent{constants.Config.UserRoomJoin, userRoomString}
+	sendEventToLobby(&lobbyUserEvent)
 
 	lobbyRoomString, err := DtoToString(MakeLobbyRoomDTO(room))
 	if err != nil {
 		log.Println("JoinRoom: Couldn't marshal.", err)
 		return
 	}
-	lobbyRoomEvent := ClientEvent{constants.ChangeRoom, lobbyRoomString}
-	sendEventToLobby(&lobbyRoomEvent, userMap)
+	lobbyRoomEvent := ClientEvent{constants.Config.RoomChange, lobbyRoomString}
+	sendEventToLobby(&lobbyRoomEvent)
 
 	roomRoomString, err := DtoToString(MakeRoomRoomDTO(room))
 	if err != nil {
 		log.Println("JoinRoom: Couldn't marshal.", err)
 		return
 	}
-	roomRoomEvent := ClientEvent{constants.ChangeRoom, roomRoomString}
+	roomRoomEvent := ClientEvent{constants.Config.RoomChange, roomRoomString}
 	sendEventToRoom(&roomRoomEvent, room)
+	sendInfoToUser(user, "You've been added as an observer to the room "+room.Name)
 	log.Println("-JoinRoom")
 
-	// TODO: Send all past events
-	/*
-		publish <- Event{ MakeDataString(constants.JoinedRoom, user.Username), user.Room.Urid }
-		for event := room.Events.Front(); event != nil; event = event.Next() {
-			log.Println("Sending stored event", *event.Value.(*Event))
-			//user.Events <- *event.Value.(*Event)
-		}
-	*/
+	for event := room.Events.Front(); event != nil; event = event.Next() {
+		sendEventToUser(event.Value.(*ClientEvent), user)
+	}
 }
 
-func LeaveRoom(username string, userMap map[string]*User, roomMap map[string]*Room) {
+func LeaveRoom(username string) {
 	log.Println("+LeaveRoom")
 	user, ok := userMap[username]
 	if !ok {
 		log.Println("LeaveRoom: User didn't exist")
 		return
 	}
-	room := user.Room;
-	user.Room = nil;
+	room := user.Room
+	user.Room = nil
 	if room == nil {
 		log.Println("LeaveRoom: User wasn't in a room")
 		return
 	}
 
+	removed := false
 	if room.PlayerOne != nil && room.PlayerOne.Username == user.Username {
 		room.PlayerOne = nil
-		changeEvent, _ := DtoToString(RoomPlayerOneChangedDTO{""})
-		RoomPlayerOneChanged(changeEvent)
+		removed = true
 	} else if room.PlayerTwo != nil && room.PlayerTwo.Username == user.Username {
 		room.PlayerTwo = nil
-		changeEvent, _ := DtoToString(RoomPlayerTwoChangedDTO{""})
-		RoomPlayerTwoChanged(changeEvent)
+		removed = true
 	} else {
 		for observer := room.Observers.Front(); observer != nil; observer = observer.Next() {
 			if observer.Value.(*User).Username == user.Username {
 				room.Observers.Remove(observer)
-				changeEvent, _ := DtoToString(RoomObserversChangedDTO{"", false})
-				RoomObserversChanged(changeEvent)
+				removed = true
 				break
 			}
 		}
+	}
+	if removed {
+		roomRoomString, err := DtoToString(MakeRoomRoomDTO(room))
+		if err != nil {
+			log.Println("LeaveRoom: Couldn't marshal.", err)
+			return
+		}
+		clientEvent := ClientEvent{constants.Config.RoomChange, roomRoomString}
+		sendEventToRoom(&clientEvent, room)
 	}
 
 	userRoomString, err := DtoToString(UserRoomDTO{username, room.Name})
@@ -146,13 +164,23 @@ func LeaveRoom(username string, userMap map[string]*User, roomMap map[string]*Ro
 		log.Println("LeaveRoom: Couldn't marshal.", err)
 		return
 	}
-	clientEvent := ClientEvent{constants.LeaveRoom, userRoomString}
-	sendEventToLobby(&clientEvent, userMap)
+	clientEvent := ClientEvent{constants.Config.UserRoomLeave, userRoomString}
+	sendEventToLobby(&clientEvent)
 	sendEventToRoom(&clientEvent, room)
+
+	if GetRoomUserCount(room) == 0 {
+		removeRoomString, err := DtoToString(RemoveRoomDTO{room.Name})
+		if err != nil {
+			log.Println("LeaveRoom: Couldn't marshal.", removeRoomString)
+			return
+		}
+		RemoveRoom(removeRoomString)
+	}
+
 	log.Println("-LeaveRoom")
 }
 
-func AddRoom(addRoomMessage, username string, userMap map[string]*User, roomMap map[string]*Room) {
+func AddRoom(addRoomMessage, username string) {
 	log.Println("+AddRoom")
 	var addRoomDTO AddRoomDTO
 	err := json.Unmarshal([]byte(addRoomMessage), &addRoomDTO)
@@ -165,6 +193,11 @@ func AddRoom(addRoomMessage, username string, userMap map[string]*User, roomMap 
 		log.Println("AddRoom: Couldn't find user who created the room")
 		return
 	}
+	if user.Room != nil {
+		sendErrorToUser(user, "Can't add a room while you're already in a room")
+		log.Println("AddRoom: User tried to add room while in a room")
+		return
+	}
 	room := Room{nil, nil, list.New(), list.New(), addRoomDTO.Name, addRoomDTO.Private, addRoomDTO.Password, MakeNewGame()}
 	roomMap[addRoomDTO.Name] = &room
 	user.Room = &room
@@ -174,8 +207,8 @@ func AddRoom(addRoomMessage, username string, userMap map[string]*User, roomMap 
 		log.Println("AddRoom: Couldn't marshal.", err)
 		return
 	}
-	addRoomClientEvent := ClientEvent{constants.AddRoom, lobbyRoomString}
-	sendEventToLobby(&addRoomClientEvent, userMap)
+	addRoomClientEvent := ClientEvent{constants.Config.RoomAdd, lobbyRoomString}
+	sendEventToLobby(&addRoomClientEvent)
 
 	joinRoomString, err := DtoToString(JoinRoomDTO{addRoomDTO.Name})
 	if err != nil {
@@ -183,45 +216,32 @@ func AddRoom(addRoomMessage, username string, userMap map[string]*User, roomMap 
 		return
 	}
 
-	JoinRoom(joinRoomString, username, userMap, roomMap)
+	JoinRoom(joinRoomString, username)
 
 	log.Println("-AddRoom")
 }
 
-func RemoveRoom(removeRoomMessage string) { // RemoveRoomDTO
-	/*
-		log.Println("+realtime.RemoveRoom")
-		roomMap := GetRoomMap()
-		room := roomMap[urid]
-		delete(roomMap, urid)
-		joinRoomDTO := JoinRoomDTO { urid }
-		joinRoomStr, _ := json.Marshal(joinRoomDTO)
-		eventDataStr := MakeDataString(constants.RemoveRoom, string(joinRoomStr))
-		event := Event { eventDataStr, urid }
-		sendEventToRoom(&event, room)
-		userMap := GetUserMap()
-		sendEventToNoRoomUsers(&event, &userMap)
-		log.Println("-realtime.RemoveRoom")
-	*/
+func RemoveRoom(removeRoomMessage string) {
+	log.Println("+RemoveRoom")
+	var removeRoomDTO RemoveRoomDTO
+	err := json.Unmarshal([]byte(removeRoomMessage), &removeRoomDTO)
+	if err != nil {
+		log.Println("Remove Room: Couldn't unmarshal", removeRoomMessage)
+		return
+	}
+
+	delete(roomMap, removeRoomDTO.Name)
+
+	clientEvent := ClientEvent{constants.Config.RoomRemove, removeRoomMessage}
+	sendEventToLobby(&clientEvent)
+	log.Println("-RemoveRoom")
 }
 
 func RoomNameChange(roomNameChanged string) { // RoomNameChangedDTO
 
 }
 
-func RoomPlayerOneChanged(roomPlayerOneChanged string) { // RoomPlayerOneChangedDTO
-
-}
-
-func RoomPlayerTwoChanged(roomPlayerTwoChanged string) { // RoomPlayerTwoChangedDTO
-
-}
-
-func RoomObserversChanged(roomObserversAdded string) { // RoomObserversAddedDTO
-
-}
-
-func Chat(incomingChat, username string, userMap map[string]*User, roomMap map[string]*Room) {
+func Chat(incomingChat, username string) {
 	log.Println("+Chat")
 	var incomingChatDTO IncomingChatDTO
 	err := json.Unmarshal([]byte(incomingChat), &incomingChatDTO)
@@ -238,12 +258,213 @@ func Chat(incomingChat, username string, userMap map[string]*User, roomMap map[s
 			log.Println("LeaveRoom: Couldn't marshal.", err)
 			return
 		}
-		clientEvent := ClientEvent{constants.Chat, outgoingChatString}
+		clientEvent := ClientEvent{constants.Config.Chat, outgoingChatString}
 		sendEventToRoom(&clientEvent, user.Room)
 	}
+	log.Println("-Chat")
 }
 
-func playerChanged(username string, userMap map[string]*User, roomMap map[string]*Room) (*User, bool) {
+func RequestPlayerOne(username string) {
+	log.Println("+RequestPlayerOne")
+	user, ok := playerChanged(username)
+	if !ok {
+		return
+	}
+	if user.Room.PlayerOne != nil {
+		sendInfoToUser(user, "You can't switch to player 1, player 1 is already taken!")
+		log.Println("Couldn't change player 1, player 1 is taken")
+		return
+	}
+	if user.Room.PlayerTwo == user {
+		sendInfoToUser(user, "You can't switch to player 1, you're already player 2!")
+		log.Println("Couldn't change player 1, user is player 2")
+		return
+	}
+	user.Room.PlayerOne = user
+	RemoveFromObservers(user)
+	roomRoomString, err := DtoToString(MakeRoomRoomDTO(user.Room))
+	if err != nil {
+		log.Println("RequestPlayerOne: Couldn't marshal.", err)
+		return
+	}
+	clientEvent := ClientEvent{constants.Config.RoomChange, roomRoomString}
+	user.Room.UpdateGame()
+	updateGameForRoom(user.Room)
+	sendEventToRoom(&clientEvent, user.Room)
+	log.Println("-RequestPlayerOne")
+}
+
+func RequestPlayerTwo(username string) {
+	log.Println("+RequestPlayerTwo")
+	user, ok := playerChanged(username)
+	if !ok {
+		return
+	}
+	if user.Room.PlayerTwo != nil {
+		sendInfoToUser(user, "You can't switch to player 2, player 2 is already taken!")
+		log.Println("Couldn't change player 2, player 2 is taken")
+		return
+	}
+	if user.Room.PlayerOne == user {
+		sendInfoToUser(user, "You can't switch to player 2, you're already player 1!")
+		log.Println("Couldn't change player 2, user is player 1")
+		return
+	}
+	user.Room.PlayerTwo = user
+	RemoveFromObservers(user)
+	roomRoomString, err := DtoToString(MakeRoomRoomDTO(user.Room))
+	if err != nil {
+		log.Println("RequestPlayerTwo: Couldn't marshal.", err)
+		return
+	}
+	clientEvent := ClientEvent{constants.Config.RoomChange, roomRoomString}
+	user.Room.UpdateGame()
+	updateGameForRoom(user.Room)
+	sendEventToRoom(&clientEvent, user.Room)
+	log.Println("-RequestPlayerTwo")
+}
+
+func LeavePlayerOne(username string) {
+	log.Println("+LeavePlayerOne")
+	user, ok := playerChanged(username)
+	if !ok {
+		return
+	}
+	if user.Room.PlayerOne == nil {
+		log.Println("Couldn't leave player 1, player 1 is nil")
+		return
+	}
+	user.Room.PlayerOne = nil
+	user.Room.Observers.PushBack(user)
+	roomRoomString, err := DtoToString(MakeRoomRoomDTO(user.Room))
+	if err != nil {
+		log.Println("LeavePlayerOne: Couldn't marshal.", err)
+		return
+	}
+	clientEvent := ClientEvent{constants.Config.RoomChange, roomRoomString}
+	user.Room.UpdateGame()
+	updateGameForRoom(user.Room)
+	sendEventToRoom(&clientEvent, user.Room)
+	log.Println("-LeavePlayerOne")
+}
+
+func LeavePlayerTwo(username string) {
+	log.Println("+LeavePlayerTwo")
+	user, ok := playerChanged(username)
+	if !ok {
+		return
+	}
+	if user.Room.PlayerTwo == nil {
+		log.Println("Couldn't leave player 2, player 2 is nil")
+		return
+	}
+	user.Room.Observers.PushBack(user)
+	user.Room.PlayerTwo = nil
+	roomRoomString, err := DtoToString(MakeRoomRoomDTO(user.Room))
+	if err != nil {
+		log.Println("LeavePlayerTwo: Couldn't marshal.", err)
+		return
+	}
+	clientEvent := ClientEvent{constants.Config.RoomChange, roomRoomString}
+	user.Room.UpdateGame()
+	updateGameForRoom(user.Room)
+	sendEventToRoom(&clientEvent, user.Room)
+	log.Println("-LeavePlayerTwo")
+}
+
+func GamePiecePlayed(gamePiecePlayed, username string) {
+	log.Println("+GamePiecePlayed")
+	var gamePiecePlayedDTO GamePiecePlayedDTO
+	err := json.Unmarshal([]byte(gamePiecePlayed), &gamePiecePlayedDTO)
+	if err != nil {
+		log.Println("GamePiecePlayed: Couldn't unmarshal", gamePiecePlayed)
+		return
+	}
+	user, ok := userMap[username]
+	if !ok {
+		log.Println("GamePiecePlayed: User didn't exist")
+		return
+	}
+	if user.Room == nil {
+		log.Println("GamePiecePlayed: User wasn't in room")
+		return
+	}
+	if user.Room.Game.GameState == GameStatePlayerOnePlaying {
+		if user.Room.PlayerOne != user {
+			sendInfoToUser(user, "You can't play that piece, you're not player 1!")
+			log.Println("GamePiecePlayed: User wasn't player one, can't play piece now.")
+			return
+		}
+		user.Room.Game.GameState = GameStatePlayerOneChoosing
+	} else if user.Room.Game.GameState == GameStatePlayerTwoPlaying {
+		if user.Room.PlayerTwo != user {
+			sendInfoToUser(user, "You can't play that piece, you're not player 2!")
+			log.Println("GamePiecePlayed: User wasn't player two, can't play piece now.")
+			return
+		}
+		user.Room.Game.GameState = GameStatePlayerTwoChoosing
+	} else {
+		sendErrorToUser(user, "Are you doing something sneaky? You shouldn't have been able to send that request...")
+		log.Println("GamePiecePlayed: Game not in proper state to play piece")
+		return
+	}
+	if user.Room.Game.Board[gamePiecePlayedDTO.Location] != -1 {
+		sendInfoToUser(user, "There is already a piece there, you can't play on that board location.")
+		return
+	}
+	user.Room.Game.Board[gamePiecePlayedDTO.Location] = user.Room.Game.SelectedPiece
+	user.Room.Game.SelectedPiece = -1
+	updateGameForRoom(user.Room)
+	log.Println("-GamePiecePlayed")
+}
+
+func GamePieceChosen(gamePieceChosen, username string) {
+	log.Println("+GamePieceChosen")
+	var gamePieceChosenDTO GamePieceChosenDTO
+	err := json.Unmarshal([]byte(gamePieceChosen), &gamePieceChosenDTO)
+	if err != nil {
+		log.Println("GamePieceChosen: Couldn't unmarshal", gamePieceChosen)
+		return
+	}
+	user, ok := userMap[username]
+	if !ok {
+		log.Println("GamePieceChosen: User didn't exist")
+		return
+	}
+	if user.Room == nil {
+		log.Println("GamePiecePlayed: User wasn't in room")
+		return
+	}
+	if user.Room.Game.GameState == GameStatePlayerOneChoosing {
+		if user.Room.PlayerOne != user {
+			sendInfoToUser(user, "You can't choose that piece, you're not player 1!")
+			log.Println("GamePiecePlayed: User wasn't player one, can't choose piece now.")
+			return
+		}
+		user.Room.Game.GameState = GameStatePlayerTwoPlaying
+	} else if user.Room.Game.GameState == GameStatePlayerTwoChoosing {
+		if user.Room.PlayerTwo != user {
+			sendInfoToUser(user, "You can't choose that piece, you're not player 2!")
+			log.Println("GamePiecePlayed: User wasn't player two, can't choose piece now.")
+			return
+		}
+		user.Room.Game.GameState = GameStatePlayerOnePlaying
+	} else {
+		sendErrorToUser(user, "Are you doing something sneaky? You shouldn't have been able to send that request...")
+		log.Println("GamePiecePlayed: Game not in proper state to play piece")
+		return
+	}
+	if !Contains(user.Room.Game.AvailablePieces, gamePieceChosenDTO.Piece) {
+		sendErrorToUser(user, "That piece has already been played.")
+		return
+	}
+	Remove(user.Room.Game.AvailablePieces, gamePieceChosenDTO.Piece)
+	user.Room.Game.SelectedPiece = gamePieceChosenDTO.Piece
+	updateGameForRoom(user.Room)
+	log.Println("-GamePieceChosen")
+}
+
+func playerChanged(username string) (*User, bool) {
 	user, ok := userMap[username]
 	if !ok {
 		log.Println("User who requested player one wasn't a user", username)
@@ -254,97 +475,38 @@ func playerChanged(username string, userMap map[string]*User, roomMap map[string
 		return nil, false
 	}
 	user.Room.Game.Reset()
-	gameString, err := DtoToString(user.Room.Game)
-	if err != nil {
-		log.Println("playerChanged: Couldn't marshal.", err)
-		return nil, false
-	}
-	clientEvent := ClientEvent{constants.ChangeGame, gameString}
-	sendEventToRoom(&clientEvent, user.Room)
+	updateGameForRoom(user.Room)
 	return user, true
 }
 
-func RequestPlayerOne(username string, userMap map[string]*User, roomMap map[string]*Room) {
-	user, ok := playerChanged(username, userMap, roomMap)
-	if !ok {
-		return
-	}
-	if user.Room.PlayerOne != nil {
-		log.Println("Couldn't change player 1, player 1 is taken")
-		return
-	}
-	user.Room.PlayerOne = user
-	roomRoomString, err := DtoToString(MakeRoomRoomDTO(user.Room))
+func updateGameForRoom(room *Room) {
+	gameString, err := DtoToString(room.Game)
 	if err != nil {
-		log.Println("RequestPlayerOne: Couldn't marshal.", err)
+		log.Println("updateGameForRoom: Couldn't marshal.", err)
 		return
 	}
-	clientEvent := ClientEvent{constants.ChangeRoom, roomRoomString}
-	user.Room.UpdateGame()
-	sendEventToRoom(&clientEvent, user.Room)
+	clientEvent := ClientEvent{constants.Config.GameChange, gameString}
+	sendEventToRoom(&clientEvent, room)
 }
 
-func RequestPlayerTwo(username string, userMap map[string]*User, roomMap map[string]*Room) {
-	user, ok := playerChanged(username, userMap, roomMap)
-	if !ok {
-		return
-	}
-	if user.Room.PlayerTwo != nil {
-		log.Println("Couldn't change player 2, player 2 is taken")
-		return
-	}
-	user.Room.PlayerTwo = user
-	roomRoomString, err := DtoToString(MakeRoomRoomDTO(user.Room))
-	if err != nil {
-		log.Println("RequestPlayerTwo: Couldn't marshal.", err)
-		return
-	}
-	clientEvent := ClientEvent{constants.ChangeRoom, roomRoomString}
-	user.Room.UpdateGame()
-	sendEventToRoom(&clientEvent, user.Room)
+func checkForWinnerAndNotifyRoom(room *Room) {
+
 }
 
-func LeavePlayerOne(username string, userMap map[string]*User, roomMap map[string]*Room) {
-	user, ok := playerChanged(username, userMap, roomMap)
-	if !ok {
+func RemoveFromObservers(user *User) {
+	room := user.Room
+	if room == nil {
 		return
 	}
-	if user.Room.PlayerOne == nil {
-		log.Println("Couldn't leave player 1, player 1 is nil")
-		return
+	for observer := room.Observers.Front(); observer != nil; observer = observer.Next() {
+		if observer.Value.(*User).Username == user.Username {
+			room.Observers.Remove(observer)
+			break
+		}
 	}
-	user.Room.PlayerOne = nil
-	roomRoomString, err := DtoToString(MakeRoomRoomDTO(user.Room))
-	if err != nil {
-		log.Println("LeavePlayerOne: Couldn't marshal.", err)
-		return
-	}
-	clientEvent := ClientEvent{constants.ChangeRoom, roomRoomString}
-	user.Room.UpdateGame()
-	sendEventToRoom(&clientEvent, user.Room)
 }
 
-func LeavePlayerTwo(username string, userMap map[string]*User, roomMap map[string]*Room) {
-	user, ok := playerChanged(username, userMap, roomMap)
-	if !ok {
-		return
-	}
-	if user.Room.PlayerTwo == nil {
-		log.Println("Couldn't leave player 2, player 2 is nil")
-		return
-	}
-	user.Room.PlayerTwo = nil
-	roomRoomString, err := DtoToString(MakeRoomRoomDTO(user.Room))
-	if err != nil {
-		log.Println("LeavePlayerTwo: Couldn't marshal.", err)
-		return
-	}
-	clientEvent := ClientEvent{constants.ChangeRoom, roomRoomString}
-	user.Room.UpdateGame()
-	sendEventToRoom(&clientEvent, user.Room)
-}
-
-func sendEventToLobby(clientEvent *ClientEvent, userMap map[string]*User) {
+func sendEventToLobby(clientEvent *ClientEvent) {
 	for _, user := range userMap {
 		if user.Room == nil {
 			user.Events <- clientEvent
@@ -365,39 +527,32 @@ func sendEventToRoom(clientEvent *ClientEvent, room *Room) {
 	room.Events.PushBack(clientEvent)
 }
 
-func sendEventToUser(clientEvent *ClientEvent, username string, userMap map[string]*User) {
-	user, ok := userMap[username]
-	if !ok {
-		log.Println("sendEventToUser: User didn't exist")
-		return // user didn't exist
-	}
-
+func sendEventToUser(clientEvent *ClientEvent, user *User) {
 	user.Events <- clientEvent
 }
 
-/*
-func ServerSideAction(requestData Data, uuid string) {
-	log.Println("+realtime.ServerSideAction", requestData)
-	var data ClientEvent
-	json.Unmarshal([]byte(requestData.Data), &data)
-	userMap := GetUserMap()
-	user := userMap[uuid]
-	switch (data.Action) {
-	case constants.AddRoom:
-		var room RoomDTO
-		json.Unmarshal([]byte(data.Data), &room)
-		user.Room = AddRoom(room.Name, user, room.Private, room.Password)
-	case constants.JoinedRoom:
-		var joinRoom JoinRoomDTO
-		json.Unmarshal([]byte(data.Data), &joinRoom)
-		JoinRoom(joinRoom, user)
-	case constants.LeftRoom:
-		removeUserFromRoom(user)
-	case "becomeObserver":
-
-	case "becomePlayer":
-
+func sendInfoToUser(user *User, message string) {
+	if user == nil {
+		return
 	}
-	log.Println("-realtime.ServerSideAction", requestData)
+	messageEvent, err := DtoToString(InfoOrErrorMessageDTO{message})
+	if err != nil {
+		log.Println("sendErrorToUser: Couldn't marshal.", err)
+		return
+	}
+	clientEvent := ClientEvent{constants.Config.Info, messageEvent}
+	sendEventToUser(&clientEvent, user)
 }
-*/
+
+func sendErrorToUser(user *User, message string) {
+	if user == nil {
+		return
+	}
+	messageEvent, err := DtoToString(InfoOrErrorMessageDTO{message})
+	if err != nil {
+		log.Println("sendErrorToUser: Couldn't marshal.", err)
+		return
+	}
+	clientEvent := ClientEvent{constants.Config.Error, messageEvent}
+	sendEventToUser(&clientEvent, user)
+}

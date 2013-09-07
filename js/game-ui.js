@@ -18,43 +18,43 @@
 			private = $('#private');
 			observers = $('#observers');
 
-            $(document).on(Quarto.constants.roomChange, function (event, data) {
+            $(document).on(Quarto.constants.RoomChange, function (event, data) {
                 roomName.text(data.Name);
                 if (!data.PlayerOne) {
                 	playerOne.html('<button type="button" class="btn btn-primary" id="request-player-one">Dibs!</button>');
                 } else if (data.PlayerOne == Quarto.socket().getUsername()) {
                 	playerOne.html('<button type="button" class="btn btn-danger" id="leave-player-one">You, Leave?</button>')
                 } else {
-                	playerOne.text(data.PlayerOne);
+                	playerOne.html('<span class="label label-default">' + data.PlayerOne + '</span>');
                 }
                 if (!data.PlayerTwo) {
                 	playerTwo.html('<button type="button" class="btn btn-primary" id="request-player-two">Dibs!</button>');
                 } else if (data.PlayerTwo == Quarto.socket().getUsername()) {
                 	playerTwo.html('<button type="button" class="btn btn-danger" id="leave-player-two">You, Leave?</button>')
                 } else {
-                	playerTwo.text(data.PlayerTwo);
+                	playerTwo.html('<span class="label label-default">' + data.PlayerTwo + '</span>');
                 }
-                $('#private').text(data.Private ? "Yes" : "No");
+                $('#privacy').text(data.Private ? "Private" : "Public");
                 observers.empty();
                 $(data.Observers).each(function(index, observer) {
-                	observers.append('<li>' + observer + '</li>')
+                	observers.append('<li><span class="label label-default">' + observer + '</span></li>')
                 });
             });
 
 			$('#game-div').on('click', '#request-player-one', function () {
-				Quarto.socket().sendMessage(Quarto.constants.gamePlayerOneRequest);
+				Quarto.socket().sendMessage(Quarto.constants.GamePlayerOneRequest);
 			});
 
 			$('#game-div').on('click', '#request-player-two', function () {
-				Quarto.socket().sendMessage(Quarto.constants.gamePlayerTwoRequest);
+				Quarto.socket().sendMessage(Quarto.constants.GamePlayerTwoRequest);
 			});
 
 			$('#game-div').on('click', '#leave-player-one', function () {
-				Quarto.socket().sendMessage(Quarto.constants.gamePlayerOneLeave);
+				Quarto.socket().sendMessage(Quarto.constants.GamePlayerOneLeave);
 			});
 
 			$('#game-div').on('click', '#leave-player-two', function () {
-				Quarto.socket().sendMessage(Quarto.constants.gamePlayerTwoLeave);
+				Quarto.socket().sendMessage(Quarto.constants.GamePlayerTwoLeave);
 			});
 
 			$('#leave-room').on('click', function () {
@@ -68,7 +68,7 @@
 			playerTwo = undefined;
 			private = undefined;
 			observers = undefined;
-			$(document).off(Quarto.constants.roomChange);
+			$(document).off(Quarto.constants.RoomChange);
 			$('#game-div').off('click');
 			$('#leave-room').off('click');
 			loaded = false;
