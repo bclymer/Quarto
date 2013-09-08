@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"quarto/constants"
@@ -71,11 +70,7 @@ func realtimeHost(ws *websocket.Conn) {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	title := "Quarto Online!"
-	p := loadPage(title)
-	t, _ := template.ParseFiles("../views/index.html")
-	w.Header().Set("Content-Type", "text/html")
-	t.Execute(w, p)
+	http.ServeFile(w, r, "../views/index.html")
 }
 
 func validateUsername(w http.ResponseWriter, r *http.Request) {
@@ -154,10 +149,4 @@ func main() {
 	http.Handle("/views/", http.StripPrefix("/views/", http.FileServer(http.Dir("../views"))))
 	http.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(http.Dir("../fonts"))))
 	http.ListenAndServe(":8080", nil)
-}
-
-func loadPage(title string) *Page {
-	filename := title + ".html"
-	body, _ := ioutil.ReadFile(filename)
-	return &Page{Title: title, Body: body}
 }

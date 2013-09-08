@@ -1,6 +1,6 @@
 (function ($) {
 
-	var chatTemplate = '<div class="message-container {2}"><span class="sender">{0}</span><span class="message"> - {1}</span></div>';
+	var chatTemplate = Handlebars.compile($("#chat-template").html());
 	var sendButton;
 	var chatInput;
 	var chatDiv;
@@ -52,8 +52,6 @@
 			});
 
 			$(document).on(Quarto.constants.Chat, function (event, data) {
-				data.Message = _.escape(data.Message);
-				data.Username = _.escape(data.Username);
 				if (!chatDiv) {
 					cachedEvents.push(data)
 					return;
@@ -64,12 +62,22 @@
 
 			$(document).on(Quarto.constants.UserRoomJoin, function (event, data) {
 				if (!chatDiv) return;
-				chatDiv.append(chatTemplate.replace("{0}", "System").replace("{1}", data.Message + " joined the room.").replace("{2}", "opponent"));
+				var message = {
+					Sender: "opponent",
+					Username: "System",
+					Message: data.Username + " joined the room."
+				}
+				chatDiv.append(chatTemplate(message));
 			});
 
 			$(document).on(Quarto.constants.UserRoomLeave, function (event, data) {
 				if (!chatDiv) return;
-				chatDiv.append(chatTemplate.replace("{0}", "System").replace("{1}", data.Message + " left the room.").replace("{2}", "opponent"));
+				var message = {
+					Sender: "opponent",
+					Username: "System",
+					Message: data.Username + " left the room."
+				}
+				chatDiv.append(chatTemplate(message));
 			});
 		}
 
@@ -104,12 +112,8 @@
 
 	function applyMessage(data) {
 		if (!chatDiv) return;
-		
-		if (data.Username == Quarto.socket().getUsername()) {
-			chatDiv.append(chatTemplate.replace("{0}", "You").replace("{1}", data.Message).replace("{2}", "you"));
-		} else {
-			chatDiv.append(chatTemplate.replace("{0}", data.Username).replace("{1}", data.Message).replace("{2}", "opponent"));
-		}
+		data.Sender = (data.Username == Quarto.socket().getUsername()) ? "you" : "opponent";
+		chatDiv.append(chatTemplate(data));
 		scrollChatToBottom();
 	}
 

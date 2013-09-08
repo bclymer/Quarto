@@ -2,29 +2,10 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <title>Quarto Online!</title>
-    <script src="/js/jquery-2.0.3.min.js"></script>
-    <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
-    <script src="/js/jquery.bpopup.min.js"></script>
-    <script src="/js/underscore-min.js"></script>
 
-    <script src="/js/app.js"></script>
-    <script src="/js/constants.js"></script>
-    <script src="/js/main.js"></script>
-    <script src="/js/game.js"></script>
-    <script src="/js/game-ui.js"></script>
-    <script src="/js/register.js"></script>
-    <script src="/js/chat.js"></script>
-    <script src="/js/socket.js"></script>
-    <script src="/js/waiting-room.js"></script>
-    <script src="/js/debug.js"></script>
-
-    <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="/css/toastr.min.css">
     <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
     <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-theme.min.css">
-
-    <script src="/js/toastr.min.js"></script>
-    <link rel="stylesheet" href="/css/toastr.min.css">
-
     <link rel="stylesheet" type="text/css" href="/css/popup.css" />
     <link rel="stylesheet" type="text/css" href="/css/main.css" />
     <link rel="stylesheet" type="text/css" href="/css/table.css" />
@@ -74,6 +55,8 @@
 
 <div id="game-div" style="display: none"> 
     <div class="form-inline room-details bordered">
+        <h2>What's Happening</h2>
+        <h3><span id="game-state" class="label label-default"></span></h3>
         <h2>Room Name</h2>
         <h3><span id="room-name" class="label label-default"></span></h3>
         <h2>Player One</h2>
@@ -103,5 +86,62 @@
         <center><span id="dialog-message"></span></center>
     </div>
 </div>
+
+<script id="chat-template" type="text/x-handlebars-template">
+    <div class="message-container {{Sender}}">
+        <span class="sender">{{Username}}</span>
+        <span class="message"> - {{Message}}</span>
+    </div>
+</script>
+<script id="user-template" type="text/x-handlebars-template">
+    <tr class="non-head" data-user-name="{{Username}}">
+        <td>
+            <div>{{Username}}</div>
+        </td>
+        <td>
+            <div><a href="#" data-user-name="{{Username}}">Challenge</a></div>
+        </td>
+        <td>
+            <div>{{RoomName}}</div>
+        </td>
+    </tr>
+</script>
+<script id="room-template" type="text/x-handlebars-template">
+    <tr class="non-head" data-room-name="{{Name}}">
+        <td>
+            <div>{{Name}}</div>
+        </td>
+        <td>
+            <div>{{Members}}</div>
+        </td>
+        <td>
+            <div>{{#if Private}}Yes{{else}}No{{/if}}</div>
+        </td>
+        <td>
+            <div><a href="#" class="join-room" data-room-name="{{Name}}">Join</a></div>
+        </td>
+    </tr>
+</script>
+
+
+<script src="/js/jquery-2.0.3.min.js"></script>
+<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
+<script src="/js/jquery.bpopup.min.js"></script>
+<script src="/js/underscore-min.js"></script>
+<script src="/js/handlebars.js"></script>
+
+<script src="/js/app.js"></script>
+<script src="/js/constants.js"></script>
+<script src="/js/main.js"></script>
+<script src="/js/game.js"></script>
+<script src="/js/game-ui.js"></script>
+<script src="/js/register.js"></script>
+<script src="/js/chat.js"></script>
+<script src="/js/socket.js"></script>
+<script src="/js/waiting-room.js"></script>
+<script src="/js/debug.js"></script>
+
+<script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+<script src="/js/toastr.min.js"></script>
 </body>
 </html>

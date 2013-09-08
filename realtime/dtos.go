@@ -133,6 +133,10 @@ type InfoOrErrorMessageDTO struct {
 	Message string
 }
 
+type GameWinnerDTO struct {
+	Winner int
+}
+
 func DtoToString(thing interface{}) (string, error) {
 	thingByteArray, err := json.Marshal(thing)
 	if err != nil {

@@ -68,13 +68,14 @@ h2 {
 }
 
 .chat-div {
+	position: absolute;
 	bottom: 50px;
-	top: 13px;
+	width: 100%;
 	overflow-y: scroll;
 }
 
 .chat-form {
-	display: block;
+	display: inline;
 	position: absolute;
 	bottom: 5px;
 }

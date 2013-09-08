@@ -1,8 +1,7 @@
 (function ($) {
 
-	var userRowConstant = '<tr class="non-head" data-user-name="{Username}"><td><div>{Username}</div></td><td><div>{Challenge}</div></td><td><div>{RoomName}</div></td></tr>';
-	var roomRowConstant = '<tr class="non-head" data-room-name="{RoomName}"><td><div>{Name}<div></td><td><div>{Members}<div></td><td><div>{Private}<div></td><td><div>{Join}<div></td></tr>';
-
+	var userRowTemplate = Handlebars.compile($("#user-template").html());
+	var roomRowTemplate = Handlebars.compile($("#room-template").html());
 	var loaded = false;
 	
 	Quarto.waitingRoom = (function () {
@@ -17,12 +16,8 @@
 				$('#users-table .non-head').remove();
 				$(data).each(function (index, user) {
 					if ($('#users-table [data-user-name="' + user.Username + '"]').length > 0) return;
-					var roomName = user.RoomName == "" ? "None" : user.RoomName;
-					var newRow = $(userRowConstant.replace('{Username}', user.Username)
-													.replace('{Username}', user.Username)
-													.replace('{Challenge}', user.Username)
-													.replace('{RoomName}', roomName));
-					usersTable.append(newRow);
+
+					usersTable.append(userRowTemplate(user));
 				});
 			}, "json");
 			$.get("/rooms", function (data) {
@@ -31,12 +26,8 @@
 				$('#rooms-table .non-head').remove();
 				$(data).each(function (index, room) {
 					if ($('#rooms-table [data-room-name="' + room.Name + '"]').length > 0) return;
-					var newRow = $(roomRowConstant.replace('{RoomName}', room.Name)
-													.replace('{Name}', room.Name)
-													.replace('{Members}', room.Members)
-													.replace('{Private}', room.Private)
-													.replace('{Join}', '<a href="#" class="join-room" data-room-name="' + room.Name + '">Join</a>'));
-					roomsTable.append(newRow);
+
+					roomsTable.append(roomRowTemplate(room));
 				});
 
 				$('#rooms-table').on('click', '.join-room', function (event) {
@@ -67,7 +58,7 @@
 					Private: false,
 					Password: ""
 				});
-
+				$('#new-room-name').val("");
 				Quarto.socket().sendMessage(Quarto.constants.RoomAdd, room);
 				Quarto.main().loadGameHTML();
 			});
@@ -75,27 +66,19 @@
 			$(document).on(Quarto.constants.RoomAdd, function(event, room) {
 				if ($('#rooms-table [data-room-name="' + room.Name + '"]').length > 0) return;
 
-				var newRow = $(roomRowConstant.replace('{RoomName}', room.Name)
-												.replace('{Name}', room.Name)
-												.replace('{Members}', room.Members)
-												.replace('{Private}', room.Private)
-												.replace('{Join}', '<a href="#" class="join-room" data-room-name="' + room.Name + '">Join</a>'));
-				$('#rooms-table').append(newRow);
-				newRow.find('div').hide().slideDown();
+				$('#rooms-table').append(roomRowTemplate(room));
 			});
 
 			$(document).on(Quarto.constants.RoomChange, function(event, room) {
 				var changedRow = $('#rooms-table [data-room-name="' + room.Name + '"]');
-
-				changedRow.empty().html(roomRowConstant.replace('{RoomName}', room.Name)
-														.replace('{Name}', room.Name)
-														.replace('{Members}', room.Members)
-														.replace('{Private}', room.Private)
-														.replace('{Join}', '<a href="#" class="join-room" data-room-name="' + room.Name + '">Join</a>'));
-				$(changedRow).animateHighlight("#dd0000", 1000);
+				var cells = changedRow.find('td');
+				$(cells[0]).text(room.Name);
+				$(cells[1]).text(room.Members);
+				$(cells[2]).text(room.Private ? "Yes" : "No");
+				$(cells[3]).html('<a href="#" class="join-room" data-room-name="' + room.Name + '">Join</a>');
 			});
 
-			$(document).on(Quarto.constants.RoomRemove, function(event, user) {
+			$(document).on(Quarto.constants.RoomRemove, function(event, room) {
 				var changedRow = $('#rooms-table [data-room-name="' + room.Name + '"]');
 				changedRow.slideUp(function() {
 					changedRow.remove();
@@ -113,12 +96,7 @@
 			$(document).on(Quarto.constants.UserAdd, function(event, user) {
 				if ($('#users-table [data-user-name="' + user.Username + '"]').length > 0) return;
 
-				var newRow = $(userRowConstant.replace('{Username}', user.Username)
-												.replace('{Username}', user.Username)
-												.replace('{Challenge}', user.Username)
-												.replace('{RoomName}', "None"));
-				$('#users-table').append(newRow);
-				newRow.find('div').hide().slideDown();
+				$('#users-table').append(userRowTemplate(user));
 			});
 
 			$(document).on(Quarto.constants.UserRemove, function(event, user) {

@@ -21,6 +21,7 @@
     var shape_piece = 3;
 
     var drawnObjects = [];
+    var drawnPieces = [];
 
     var possiblePieces = [
         {square: true, hole: true, white: true, tall: true},
@@ -84,6 +85,18 @@
                 usedPieces = data.UsedPieces;
                 boardLocations = data.Board;
                 selectedPiece = data.SelectedPiece;
+                _.each(boardLocations, function (piece, index) {
+                    if (piece != -1) {
+                        var location = getLocationXandY(index);
+                        drawnPieces[piece].x = location[0];
+                        drawnPieces[piece].y = location[1];
+                    }
+                });
+                if (selectedPiece != -1) {
+                    var location = getLocationXandY(16);
+                    drawnPieces[selectedPiece].x = location[0];
+                    drawnPieces[selectedPiece].y = location[1];
+                }
                 draw();
             });
 
@@ -206,6 +219,7 @@
 
     function resetState() {
         drawnObjects = [];
+        drawnPieces = [];
         usedPieces = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
         boardLocations = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
         availablePieces = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
@@ -213,26 +227,28 @@
         drawnObjects[0] = new DrawnObject(0.26, 0, shape_circle, 1);
         for (var i = 0; i < 16; i++) {
             var coordinates = getLocationXandY(i);
-            drawnObjects[i + 1] = new DrawnObject(coordinates[0], coordinates[1], shape_circle, smallSize, i,
+            var drawnObj = new DrawnObject(coordinates[0], coordinates[1], shape_circle, smallSize, i,
                 function (object) {
-                    //if (gameState == gameStatePlayerOnePlaying || gameState == gameStatePlayerTwoPlaying) {
-                        //if (boardLocations[object.data] != -1) {
-                            //return;
-                        //}
+                    if (gameState == gameStatePlayerOnePlaying || gameState == gameStatePlayerTwoPlaying) {
+                        if (boardLocations[object.data] != -1) {
+                            toastr.info("There is already a piece here.")
+                            return;
+                        }
                         var locationData = JSON.stringify({
                             Location: object.data
                         });
                         Quarto.socket().sendMessage(Quarto.constants.GamePiecePlayed, locationData);
-                    //}
+                    }
                 }
             );
+            drawnObjects[i + 1] = drawnObj;
         }
 
         var x = -1.13, y = -0.87, z = 0;
         for (var i = 0; i < availablePieces.length; i++) {
             var pieceId = availablePieces[i];
             var piece = possiblePieces[pieceId];
-            drawnObjects[drawnObjects.length] = new DrawnObject(
+            var drawnObj = new DrawnObject(
                 x, y, shape_piece, -1 /* overwritten */,
                 {
                     square: piece.square,
@@ -242,16 +258,18 @@
                     pieceId: pieceId
                 },
                 function (object) {
-                    //if (gameState == gameStatePlayerOneChoosing || gameState == gameStatePlayerTwoChoosing) {
-                        //if (selectedPiece == -1 && usedPieces.indexOf(object.data.pieceId) == -1) {
+                    if (gameState == gameStatePlayerOneChoosing || gameState == gameStatePlayerTwoChoosing) {
+                        if (selectedPiece == -1 && usedPieces.indexOf(object.data.pieceId) == -1) {
                             var pieceData = JSON.stringify({
                                 Piece: object.data.pieceId
                             });
                             Quarto.socket().sendMessage(Quarto.constants.GamePieceChosen, pieceData);
-                        //}
-                    //}
+                        }
+                    }
                 }
             );
+            drawnObjects[drawnObjects.length] = drawnObj;
+            drawnPieces[i] = drawnObj;
 
             y += 0.25;
             if (++z == 8) {

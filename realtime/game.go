@@ -2,6 +2,21 @@ package realtime
 
 import ()
 
+type Game struct {
+	GameState       int
+	UsedPieces      []int
+	AvailablePieces []int
+	Board           []int
+	SelectedPiece   int
+}
+
+type Piece struct {
+	Square bool
+	Hole   bool
+	White  bool
+	Tall   bool
+}
+
 const (
 	GameStateNoPlayers         = 0
 	GameStatePlayerOneChoosing = 1
@@ -10,13 +25,24 @@ const (
 	GameStatePlayerTwoPlaying  = 4
 )
 
-type Game struct {
-	GameState       int
-	UsedPieces      []int
-	AvailablePieces []int
-	Board           []int
-	SelectedPiece   int
-}
+var (
+	pieces = []Piece{Piece{Square: true, Hole: true, White: true, Tall: true},
+		Piece{Square: true, Hole: true, White: true, Tall: false},
+		Piece{Square: true, Hole: true, White: false, Tall: true},
+		Piece{Square: true, Hole: true, White: false, Tall: false},
+		Piece{Square: true, Hole: false, White: true, Tall: true},
+		Piece{Square: true, Hole: false, White: true, Tall: false},
+		Piece{Square: true, Hole: false, White: false, Tall: true},
+		Piece{Square: true, Hole: false, White: false, Tall: false},
+		Piece{Square: false, Hole: true, White: true, Tall: true},
+		Piece{Square: false, Hole: true, White: true, Tall: false},
+		Piece{Square: false, Hole: true, White: false, Tall: true},
+		Piece{Square: false, Hole: true, White: false, Tall: false},
+		Piece{Square: false, Hole: false, White: true, Tall: true},
+		Piece{Square: false, Hole: false, White: true, Tall: false},
+		Piece{Square: false, Hole: false, White: false, Tall: true},
+		Piece{Square: false, Hole: false, White: false, Tall: false}}
+)
 
 func MakeNewGame() *Game {
 	pieces := make([]int, 16, 16)
@@ -46,6 +72,11 @@ func (game *Game) Reset() {
 	game.AvailablePieces = pieces
 	game.Board = board
 	game.SelectedPiece = -1
+}
+
+func (game *Game) CheckWinner() int {
+
+	return 0
 }
 
 func (room *Room) UpdateGame() {

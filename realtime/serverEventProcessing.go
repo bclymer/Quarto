@@ -117,6 +117,14 @@ func JoinRoom(joinRoomMessage, username string) {
 	for event := room.Events.Front(); event != nil; event = event.Next() {
 		sendEventToUser(event.Value.(*ClientEvent), user)
 	}
+
+	gameString, err := DtoToString(room.Game)
+	if err != nil {
+		log.Println("updateGameForRoom: Couldn't marshal.", err)
+		return
+	}
+	clientEvent := ClientEvent{constants.Config.GameChange, gameString}
+	sendEventToUser(&clientEvent, user)
 }
 
 func LeaveRoom(username string) {
@@ -260,6 +268,10 @@ func Chat(incomingChat, username string) {
 		}
 		clientEvent := ClientEvent{constants.Config.Chat, outgoingChatString}
 		sendEventToRoom(&clientEvent, user.Room)
+		if user.Room.Events.Len() >= 10 {
+			user.Room.Events.Remove(user.Room.Events.Front())
+		}
+		user.Room.Events.PushBack(&clientEvent)
 	}
 	log.Println("-Chat")
 }
@@ -414,6 +426,15 @@ func GamePiecePlayed(gamePiecePlayed, username string) {
 	}
 	user.Room.Game.Board[gamePiecePlayedDTO.Location] = user.Room.Game.SelectedPiece
 	user.Room.Game.SelectedPiece = -1
+
+	if winner := user.Room.Game.CheckWinner(); winner != 0 {
+		gameWinnerString, err := DtoToString(GameWinnerDTO{winner})
+		if err != nil {
+			log.Println("GamePiecePlayed: Couldn't marshal.", err)
+		}
+		clientEvent := ClientEvent{constants.Config.GameWinner, gameWinnerString}
+		sendEventToRoom(&clientEvent, user.Room)
+	}
 	updateGameForRoom(user.Room)
 	log.Println("-GamePiecePlayed")
 }
@@ -524,7 +545,6 @@ func sendEventToRoom(clientEvent *ClientEvent, room *Room) {
 	for observer := room.Observers.Front(); observer != nil; observer = observer.Next() {
 		observer.Value.(*User).Events <- clientEvent
 	}
-	room.Events.PushBack(clientEvent)
 }
 
 func sendEventToUser(clientEvent *ClientEvent, user *User) {

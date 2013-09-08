@@ -1,6 +1,7 @@
 (function ($) {
 
 	var loaded = false;
+	var gameState;
 	var roomName;
 	var playerOne;
 	var playerTwo;
@@ -12,6 +13,7 @@
 		function start() {
 			loaded = true;
 			console.log("gameUi start()");
+			gameState = $('#game-state');
 			roomName = $('#room-name');
 			playerOne = $('#player-one');
 			playerTwo = $('#player-two');
@@ -41,6 +43,28 @@
                 });
             });
 
+			$(document).on(Quarto.constants.GameChange, function (event, data) {
+				var gameStateText;
+            	switch(data.GameState) {
+            		case 0:
+            			gameStateText = "Waiting for players";
+            			break;
+            		case 1:
+            			gameStateText = "Player one is choosing a piece.";
+            			break;
+            		case 2:
+            			gameStateText = "Player one is playing the chosen piece.";
+            			break;
+            		case 3:
+            			gameStateText = "Player two is choosing a piece.";
+            			break;
+            		case 4:
+            			gameStateText = "Player two is playing the chosen piece.";
+            			break;
+            	}
+            	gameState.text(gameStateText);
+			});
+
 			$('#game-div').on('click', '#request-player-one', function () {
 				Quarto.socket().sendMessage(Quarto.constants.GamePlayerOneRequest);
 			});
@@ -63,6 +87,7 @@
 		}
 
 		function stop() {
+			gameState = undefined;
 			roomName = undefined;
 			playerOne = undefined;
 			playerTwo = undefined;
