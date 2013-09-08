@@ -2,6 +2,14 @@
 
 	$(document).ready(function () {
 		Quarto.main().loadRegisterHTML();
+
+		toastr.options = {
+            "debug": false,
+            "fadeIn": 300,
+            "fadeOut": 500,
+            "timeOut": 2000,
+            "extendedTimeOut": 1000
+        }
 	});
 
 	$(document).on(Quarto.constants.Info, function (event, data) {

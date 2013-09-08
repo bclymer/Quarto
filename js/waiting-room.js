@@ -43,13 +43,23 @@
 			}, "json");
 
 			$('#create-new-room').on('click', function (event) {
-				$('#create-room').show(function() {
-					$('#new-room-name').focus();
+				$('#create-room').bPopup({
+					onOpen: function() {
+						$('#new-room-name').on('keydown', function (e) {
+							if (e.which == 13 && $('#new-room-name').val().length > 0) {
+								$('#submit-new-room').click();
+								return false;
+							}
+						});
+					},
+					onClose: function() {
+						$('#new-room-name').off('keydown');
+					}
 				});
-				$('#create-new-room').addClass('disabled');
 			});
 
 			$('#submit-new-room').on('click', function (event) {
+				$('#create-room').bPopup().close();
 				$('#create-room').hide('slow');
 				$('#create-new-room').removeClass('disabled');
 

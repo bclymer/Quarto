@@ -27,19 +27,19 @@
                 } else if (data.PlayerOne == Quarto.socket().getUsername()) {
                 	playerOne.html('<button type="button" class="btn btn-danger" id="leave-player-one">You, Leave?</button>')
                 } else {
-                	playerOne.html('<span class="label label-default">' + data.PlayerOne + '</span>');
+                	playerOne.html('<span class="label label-default">' + _.escape(data.PlayerOne) + '</span>');
                 }
                 if (!data.PlayerTwo) {
                 	playerTwo.html('<button type="button" class="btn btn-primary" id="request-player-two">Dibs!</button>');
                 } else if (data.PlayerTwo == Quarto.socket().getUsername()) {
                 	playerTwo.html('<button type="button" class="btn btn-danger" id="leave-player-two">You, Leave?</button>')
                 } else {
-                	playerTwo.html('<span class="label label-default">' + data.PlayerTwo + '</span>');
+                	playerTwo.html('<span class="label label-default">' + _.escape(data.PlayerTwo) + '</span>');
                 }
                 $('#privacy').text(data.Private ? "Private" : "Public");
                 observers.empty();
                 $(data.Observers).each(function(index, observer) {
-                	observers.append('<li><span class="label label-default">' + observer + '</span></li>')
+                	observers.append('<li><span class="label label-default">' + _.escape(observer) + '</span></li>')
                 });
             });
 

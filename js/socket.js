@@ -5,7 +5,7 @@
 	
 	Quarto.socket = (function () {
 
-		function makeConnection(requestedUsername) {
+		function makeConnection(requestedUsername, onOpen) {
 			username = requestedUsername;
 			socket = new WebSocket('ws://' + window.location.host + '/realtime?username=' + username);
 			socket.onmessage = function (event) {
@@ -19,6 +19,16 @@
 				}
 				data = JSON.parse(message.Data);
 				$(document).trigger(message.Action, data);
+			};
+			socket.onopen = onOpen();
+			socket.onclose = function () {
+				toastr.error("Lost Connection to Server");
+				Quarto.main().loadRegisterHTML();
+			};
+			socket.onerror = function() {
+				toastr.error("Lost Connection to Server");
+				Quarto.main().loadRegisterHTML();
+				socket.close();
 			};
 		}
 

@@ -165,6 +165,8 @@ func LeaveRoom(username string) {
 		}
 		clientEvent := ClientEvent{constants.Config.RoomChange, roomRoomString}
 		sendEventToRoom(&clientEvent, room)
+		user.Room.UpdateGame()
+		updateGameForRoom(user.Room)
 	}
 
 	userRoomString, err := DtoToString(UserRoomDTO{username, room.Name})
@@ -204,6 +206,10 @@ func AddRoom(addRoomMessage, username string) {
 	if user.Room != nil {
 		sendErrorToUser(user, "Can't add a room while you're already in a room")
 		log.Println("AddRoom: User tried to add room while in a room")
+		return
+	}
+	if _, ok = roomMap[addRoomDTO.Name]; ok {
+		sendErrorToUser(user, "A room with the name "+addRoomDTO.Name+" already exists.")
 		return
 	}
 	room := Room{nil, nil, list.New(), list.New(), addRoomDTO.Name, addRoomDTO.Private, addRoomDTO.Password, MakeNewGame()}

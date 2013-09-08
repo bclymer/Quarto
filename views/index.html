@@ -22,11 +22,6 @@
     <div class="row">
         <div id="rooms" class="col-md-6">
             <h2>Rooms <button id="create-new-room" type="button" class="btn btn-primary btn-sm" style="float: right; margin-right: 2px">Create Room</button></h2>
-            <div id="create-room" class="form-inline" style="display: none;">
-                <label for="new-room-name">Room Name:</label>
-                <input id="new-room-name" class="form-control" type="text" style="width: 363px" />
-                <button id="submit-new-room" type="button" class="btn btn-primary btn-sm">Submit Room</button>
-            </div>
             <table id="rooms-table">
                 <thead>
                   <tr>
@@ -86,6 +81,11 @@
         <center><span id="dialog-message"></span></center>
     </div>
 </div>
+<div id="create-room" class="register light-background bordered" style="display: none;">
+    <h2 class="register-element">Create New Room</h2>
+    <input class="form-control register-element" id="new-room-name" type="text" placeholder="Choose a room name" autocomplete="off" />
+    <button class="btn btn-primary btn-sm register-element" id="submit-new-room">Create Room</button>
+</div>
 
 <script id="chat-template" type="text/x-handlebars-template">
     <div class="message-container {{Sender}}">
@@ -122,7 +122,6 @@
         </td>
     </tr>
 </script>
-
 
 <script src="/js/jquery-2.0.3.min.js"></script>
 <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>

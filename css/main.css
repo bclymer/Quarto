@@ -22,8 +22,8 @@ h2 {
 }
 
 .register {
-	width: 250px;
-	height: 130px;
+	width: 274px;
+	height: 135px;
 	left: 0;
 	right: 0;
 	top:0;
@@ -105,6 +105,10 @@ h2 {
 .bottom {
 	position: absolute;
 	bottom: 5px;
+}
+
+.light-background {
+	background-color: #E0E0E0;
 }
 
 #canvas {

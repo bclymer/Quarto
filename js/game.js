@@ -110,9 +110,7 @@
         function stop() {
             $(window).off('resize');
             $('#game-div').hide();
-            $(document).off(Quarto.constants.UserRoomJoin)
-                        .off(Quarto.constants.UserRoomLeave)
-                        .off(Quarto.constants.GameChange);
+            $(document).off(Quarto.constants.GameChange);
             Quarto.socket().sendMessage(Quarto.constants.UserRoomLeave, "");
             loaded = false;
             console.log("game stop()");
@@ -190,31 +188,6 @@
         } else if (this.shape == 3) {
             drawPiece([this.x, this.y], this.data.square, this.data.hole, this.data.white, this.data.tall);
         }
-    }
-
-    function locationChosen(location) {
-        var piece;
-        for (var i = 0; i < drawnObjects.length; i++) {
-            if (drawnObjects[i].shape == 3 && drawnObjects[i].data.pieceId == selectedPiece) {
-                piece = drawnObjects[i];
-                break;
-            }
-        }
-        var selectedCoordinates = getLocationXandY(location);
-        piece.x = selectedCoordinates[0];
-        piece.y = selectedCoordinates[1];
-        boardLocations[location] = selectedPiece;
-        usedPieces[usedPieces.length] = selectedPiece;
-        selectedPiece = -1;
-        draw();
-        checkForWinner();
-    }
-
-    function pieceChosen(piece) {
-        var selectedCoordinates = getLocationXandY(16);
-        piece.x = selectedCoordinates[0];
-        piece.y = selectedCoordinates[1];
-        draw();
     }
 
     function resetState() {
