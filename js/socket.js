@@ -1,79 +1,56 @@
 (function ($) {
 
-	var uuid;
-	var opponent;
-
 	var socket;
+	var username;
 	
 	Quarto.socket = (function () {
 
-		function makeConnection(requestedUuid) {
-			uuid = requestedUuid;
-			socket = new WebSocket('ws://' + window.location.host + '/realtime?uuid=' + uuid);
+		function makeConnection(requestedUsername, onOpen) {
+			username = requestedUsername;
+			socket = new WebSocket('ws://' + window.location.host + '/realtime?username=' + username);
 			socket.onmessage = function (event) {
-				var message = JSON.parse(event.data);
-				if (message.Uuid == uuid || (message.Uuid != opponent && opponent)) {
-					console.log("Rejecting message, not opponent.");
+				console.log("In: " + event.data);
+				if (!event.data) {
 					return;
 				}
-
-				if (message.Action == "action") {
-					data = JSON.parse(message.Data);
-					data.Uuid = message.Uuid;
-					$(document).trigger(data.action, data);
-				} else {
-					$(document).trigger(message.Action, message);
+				var message = JSON.parse(event.data);
+				if (!message.Data) {
+					return;
 				}
+				data = JSON.parse(message.Data);
+				$(document).trigger(message.Action, data);
+			};
+			socket.onopen = onOpen();
+			socket.onclose = function () {
+				toastr.error("Lost Connection to Server");
+				Quarto.main().loadRegisterHTML();
+			};
+			socket.onerror = function() {
+				toastr.error("Lost Connection to Server");
+				Quarto.main().loadRegisterHTML();
+				socket.close();
 			};
 		}
 
 		function sendMessage(action, message) {
-			if (!opponent) return;
+			var serializedMessage = JSON.stringify({
+				Action: action,
+				Data: message
+			});
+			console.log("Out: " + serializedMessage);
+			socket.send(serializedMessage);
+		}
 
-			socket.send(JSON.stringify({
-				action: action,
-				data: message,
-				ToUuid: opponent
-			}));
+		function getUsername() {
+			return username;
 		}
 
 		return {
 			makeConnection: makeConnection,
-			sendMessage: sendMessage
+			sendMessage: sendMessage,
+			getUsername: getUsername,
 		}
 
-	});
-
-	function recieveMessage(event) {
-		var message = JSON.parse(event.data);
-		if (message.Uuid == uuid || (message.Uuid != opponent && opponent)) {
-			console.log("Rejecting message, not opponent.");
-			return;
-		}
-
-		if (message.Action == "action") {
-			data = JSON.parse(message.Data);
-			data.Uuid = message.Uuid;
-			$(document).trigger(data.action, data);
-		} else {
-			$(document).trigger(message.Action, message);
-		}
-	}
-
-	$(document).on("joined", function (event, data) {
-		opponent = data.Uuid;
-		Quarto.socket().sendMessage("accept", uuid);
-		console.log("accepting partner " + opponent);
-	});
-
-	$(document).on("accept", function (event, data) {
-		opponent = data.data;
-		console.log("accpeted partner " + opponent);
-	});
-
-	$(document).on("left", function (event, data) {
-		console.log(opponent + " left");
-		opponent = undefined;
 	});
 
 

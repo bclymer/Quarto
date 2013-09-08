@@ -2,25 +2,145 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <title>Quarto Online!</title>
-    <script src="/js/jquery-2.0.3.min.js"></script>
-    <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
 
-    <script src="/js/main.js"></script>
-    <script src="/js/game.js"></script>
-    <script src="/js/register.js"></script>
-    <script src="/js/chat.js"></script>
-    <script src="/js/socket.js"></script>
-
-    <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="/css/toastr.min.css">
     <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
     <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-theme.min.css">
-
-    <script src="/js/toastr.min.js"></script>
-    <link rel="stylesheet" href="/css/toastr.min.css">
-
+    <link rel="stylesheet" type="text/css" href="/css/popup.css" />
     <link rel="stylesheet" type="text/css" href="/css/main.css" />
+    <link rel="stylesheet" type="text/css" href="/css/table.css" />
 </head>
 <body>
 
+<div class="register" id="register" style="display: none">
+    <h2 class="register-element">Quarto Online</h2>
+    <input class="form-control register-element" id="username" type="text" placeholder="Choose a username" autocomplete="off" />
+    <button class="btn btn-primary btn-sm register-element" id="submit-username">Play Quarto!</button>
+</div>
+
+<div id="waiting-room" class="container" style="display: none">
+    <div class="row">
+        <div id="rooms" class="col-md-6">
+            <h2>Rooms <button id="create-new-room" type="button" class="btn btn-primary btn-sm" style="float: right; margin-right: 2px">Create Room</button></h2>
+            <table id="rooms-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Members</th>
+                    <th>Private</th>
+                    <th>Join</th>
+                  </tr>
+                </thead>
+            </table>
+        </div>
+        <div id="users" class="col-md-6">
+            <h2>Users</h2>
+            <table id="users-table">
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Challenge</th>
+                    <th>Room</th>
+                  </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="game-div" style="display: none"> 
+    <div class="form-inline room-details bordered">
+        <h2>What's Happening</h2>
+        <h3><span id="game-state" class="label label-default"></span></h3>
+        <h2>Room Name</h2>
+        <h3><span id="room-name" class="label label-default"></span></h3>
+        <h2>Player One</h2>
+        <h3 id="player-one"></h3>
+        <h2>Player Two</h2>
+        <h3 id="player-two"></h3>
+        <h2>Observers</h2>
+        <ul id="observers">
+            
+        </ul>
+        <h2>Privacy</h2>
+        <h3><span id="privacy" class="label label-default"></span></h3>
+        <button type="button" id="leave-room" class="btn btn-danger bottom">Leave Room</button>
+    </div>
+    <canvas id="canvas">
+        Your browser doesn't support canvas. Sorry.
+    </canvas>
+    <div class="bordered chat-container">
+        <div class="chat-div" id="chat-div"></div>
+        <div class="form-inline chat-form">
+            <input class="form-control" type="text" id="chat" style="width: 230px" placeholder="Send a message..." />
+            <input type="button" class="btn btn-primary btn-sm disabled" id="send" value="Send" />
+        </div>
+    </div>
+    <div id="popup">
+        <span class="button b-close"><span>X</span></span>
+        <center><span id="dialog-message"></span></center>
+    </div>
+</div>
+<div id="create-room" class="register light-background bordered" style="display: none;">
+    <h2 class="register-element">Create New Room</h2>
+    <input class="form-control register-element" id="new-room-name" type="text" placeholder="Choose a room name" autocomplete="off" />
+    <button class="btn btn-primary btn-sm register-element" id="submit-new-room">Create Room</button>
+</div>
+
+<script id="chat-template" type="text/x-handlebars-template">
+    <div class="message-container {{Sender}}">
+        <span class="sender">{{Username}}</span>
+        <span class="message"> - {{Message}}</span>
+    </div>
+</script>
+<script id="user-template" type="text/x-handlebars-template">
+    <tr class="non-head" data-user-name="{{Username}}">
+        <td>
+            <div>{{Username}}</div>
+        </td>
+        <td>
+            <div><a href="#" data-user-name="{{Username}}">Challenge</a></div>
+        </td>
+        <td>
+            <div>{{RoomName}}</div>
+        </td>
+    </tr>
+</script>
+<script id="room-template" type="text/x-handlebars-template">
+    <tr class="non-head" data-room-name="{{Name}}">
+        <td>
+            <div>{{Name}}</div>
+        </td>
+        <td>
+            <div>{{Members}}</div>
+        </td>
+        <td>
+            <div>{{#if Private}}Yes{{else}}No{{/if}}</div>
+        </td>
+        <td>
+            <div><a href="#" class="join-room" data-room-name="{{Name}}">Join</a></div>
+        </td>
+    </tr>
+</script>
+
+<script src="/js/jquery-2.0.3.min.js"></script>
+<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
+<script src="/js/jquery.bpopup.min.js"></script>
+<script src="/js/underscore-min.js"></script>
+<script src="/js/handlebars.js"></script>
+
+<script src="/js/app.js"></script>
+<script src="/js/constants.js"></script>
+<script src="/js/main.js"></script>
+<script src="/js/game.js"></script>
+<script src="/js/game-ui.js"></script>
+<script src="/js/register.js"></script>
+<script src="/js/chat.js"></script>
+<script src="/js/socket.js"></script>
+<script src="/js/waiting-room.js"></script>
+<script src="/js/debug.js"></script>
+
+<script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+<script src="/js/toastr.min.js"></script>
 </body>
 </html>

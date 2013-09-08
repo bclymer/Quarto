@@ -1,5 +1,7 @@
 ﻿(function ($) {
 
+    var loaded = false;
+
     var fullRadius;
     var smallSize = 0.18;
     var farX = 0.8;
@@ -8,17 +10,18 @@
     var context;
     var gameState = 0;
 
-    var game_state_no_player = 0;
-    var game_state_waiting_for_piece = 1;
-    var game_state_playing_piece = 2;
-    var game_state_choosing_piece = 3;
-    var game_state_waiting_for_play = 4;
+    var gameStateNoPlayers         = 0
+    var gameStatePlayerOneChoosing = 1
+    var gameStatePlayerOnePlaying  = 2
+    var gameStatePlayerTwoChoosing = 3
+    var gameStatePlayerTwoPlaying  = 4
 
     var shape_circle = 1;
     var shape_square = 2;
     var shape_piece = 3;
 
     var drawnObjects = [];
+    var drawnPieces = [];
 
     var possiblePieces = [
         {square: true, hole: true, white: true, tall: true},
@@ -39,86 +42,89 @@
         { square: false, hole: false, white: false, tall: false }
     ];
 
-    var usedPieces = [];
-
+    var usedPieces = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
     var availablePieces = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-
     var boardLocations = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
 
     Quarto.game = (function () {
-        function loadGameHTML(uuid) {
-            $('body').load('views/game.html', function() {
-                Quarto.socket().makeConnection(uuid);
-                Quarto.chat().attachEventsToGamePage();
+        function start(uuid) {
+            loaded = true;
+            console.log("game start()");
+            $('#game-div').show();
+            $('body').animate({backgroundColor: '#EEEEEE'}, 500);
+            Quarto.chat().start();
+            Quarto.gameUi().start();
+            
+            var canvasElement = $('canvas');
+            context = canvasElement.get(0).getContext('2d');
+            context.canvas.addEventListener('mousedown', mouseClick, false);
 
-                $('#game-div').hide();
-                $('#game-div').fadeIn(500);
-                
-                var canvasElement = $('canvas');
-                context = canvasElement.get(0).getContext("2d");
-                context.canvas.addEventListener("mousedown", mouseClick, false);
+            resetState();
 
-                resetState();
+            context.canvas.width = window.innerWidth - 600;
+            context.canvas.height = window.innerHeight;
+            draw();
 
-                context.canvas.width = window.innerWidth - 300;
-                context.canvas.height = window.innerHeight;
-                draw();
-
-                function mouseClick(event) {
-                    for (var i = 0; i < drawnObjects.length; i++) {
-                        var object = drawnObjects[i];
-                        if (object.containsPoint(event.x, event.y)) {
-                            if (object.onClick) {
-                                object.onClick(object);
-                            }
+            function mouseClick(event) {
+                for (var i = 0; i < drawnObjects.length; i++) {
+                    var object = drawnObjects[i];
+                    if (object.containsPoint(event.x - 300, event.y)) {
+                        if (object.onClick) {
+                            object.onClick(object);
                         }
                     }
                 }
+            }
+
+            $(document).on(Quarto.constants.GameChange, function (event, data) {
+                gameState = data.GameState;
+                if (gameState == gameStateNoPlayers) {
+                    resetState();
+                }
+                availablePieces = data.AvailablePieces;
+                usedPieces = data.UsedPieces;
+                boardLocations = data.Board;
+                selectedPiece = data.SelectedPiece;
+                _.each(boardLocations, function (piece, index) {
+                    if (piece != -1) {
+                        var location = getLocationXandY(index);
+                        drawnPieces[piece].x = location[0];
+                        drawnPieces[piece].y = location[1];
+                    }
+                });
+                if (selectedPiece != -1) {
+                    var location = getLocationXandY(16);
+                    drawnPieces[selectedPiece].x = location[0];
+                    drawnPieces[selectedPiece].y = location[1];
+                }
+                draw();
+            });
+
+            $(window).on('resize', function () {
+                context.canvas.width = window.innerWidth - 600;
+                context.canvas.height = window.innerHeight;
+                draw();
             });
         }
 
+        function stop() {
+            $(window).off('resize');
+            $('#game-div').hide();
+            $(document).off(Quarto.constants.GameChange);
+            Quarto.socket().sendMessage(Quarto.constants.UserRoomLeave, "");
+            loaded = false;
+            console.log("game stop()");
+        }
+
+        function isLoaded() {
+            return loaded;
+        }
+
         return {
-            loadGameHTML: loadGameHTML
+            start: start,
+            stop: stop,
+            isLoaded: isLoaded,
         }
-    });
-
-    $(document).on("joined", function (event, data) {
-        gameState = game_state_waiting_for_piece;
-        resetState();
-        draw();
-    });
-
-    $(document).on("accept", function (event, data) {
-        gameState = game_state_choosing_piece;
-        resetState();
-        draw();
-    });
-
-    $(document).on("left", function (event, data) {
-        gameState = game_state_no_player;
-        resetState();
-        draw();
-    });
-
-    $(document).on("chosen", function (event, data) {
-        var pieceId = parseInt(data.data);
-        selectedPiece = pieceId;
-
-        var piece;
-        for (var i = 0; i < drawnObjects.length; i++) {
-            if (drawnObjects[i].shape == 3 && drawnObjects[i].data.pieceId == pieceId) {
-                piece = drawnObjects[i];
-                break;
-            }
-        }
-
-        gameState = game_state_playing_piece;
-        pieceChosen(piece);
-    });
-
-    $(document).on("placed", function (event, data) {
-        gameState = game_state_waiting_for_piece;
-        locationChosen(data.data);
     });
 
     // 1: circle, 2: square, 3: piece
@@ -184,57 +190,38 @@
         }
     }
 
-    function locationChosen(location) {
-        var piece;
-        for (var i = 0; i < drawnObjects.length; i++) {
-            if (drawnObjects[i].shape == 3 && drawnObjects[i].data.pieceId == selectedPiece) {
-                piece = drawnObjects[i];
-                break;
-            }
-        }
-        var selectedCoordinates = getLocationXandY(location);
-        piece.x = selectedCoordinates[0];
-        piece.y = selectedCoordinates[1];
-        boardLocations[location] = selectedPiece;
-        usedPieces[usedPieces.length] = selectedPiece;
-        selectedPiece = -1;
-        draw();
-        checkForWinner();
-    }
-
-    function pieceChosen(piece) {
-        var selectedCoordinates = getLocationXandY(16);
-        piece.x = selectedCoordinates[0];
-        piece.y = selectedCoordinates[1];
-        draw();
-    }
-
     function resetState() {
-        usedPieces = [];
         drawnObjects = [];
+        drawnPieces = [];
+        usedPieces = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
         boardLocations = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
+        availablePieces = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 
-        drawnObjects[0] = new DrawnObject(0.6, 0, shape_circle, 1);
+        drawnObjects[0] = new DrawnObject(0.26, 0, shape_circle, 1);
         for (var i = 0; i < 16; i++) {
             var coordinates = getLocationXandY(i);
-            drawnObjects[i + 1] = new DrawnObject(coordinates[0], coordinates[1], shape_circle, smallSize, i,
+            var drawnObj = new DrawnObject(coordinates[0], coordinates[1], shape_circle, smallSize, i,
                 function (object) {
-                    if (gameState == game_state_playing_piece) {
+                    if (gameState == gameStatePlayerOnePlaying || gameState == gameStatePlayerTwoPlaying) {
                         if (boardLocations[object.data] != -1) {
+                            toastr.info("There is already a piece here.")
                             return;
                         }
-                        gameState = game_state_choosing_piece;
-                        locationChosen(object.data);
-                        Quarto.socket().sendMessage("placed", object.data);
+                        var locationData = JSON.stringify({
+                            Location: object.data
+                        });
+                        Quarto.socket().sendMessage(Quarto.constants.GamePiecePlayed, locationData);
                     }
-                });
+                }
+            );
+            drawnObjects[i + 1] = drawnObj;
         }
 
-        var x = -0.87, y = -0.87, z = 0;
+        var x = -1.13, y = -0.87, z = 0;
         for (var i = 0; i < availablePieces.length; i++) {
             var pieceId = availablePieces[i];
             var piece = possiblePieces[pieceId];
-            drawnObjects[drawnObjects.length] = new DrawnObject(
+            var drawnObj = new DrawnObject(
                 x, y, shape_piece, -1 /* overwritten */,
                 {
                     square: piece.square,
@@ -244,17 +231,18 @@
                     pieceId: pieceId
                 },
                 function (object) {
-                    if (gameState == game_state_choosing_piece) {
+                    if (gameState == gameStatePlayerOneChoosing || gameState == gameStatePlayerTwoChoosing) {
                         if (selectedPiece == -1 && usedPieces.indexOf(object.data.pieceId) == -1) {
-                            gameState = game_state_waiting_for_play;
-                            pieceChosen(object);
-                            selectedPiece = object.data.pieceId;
-                            console.log("send: " + selectedPiece);
-                            Quarto.socket().sendMessage("chosen", selectedPiece);
+                            var pieceData = JSON.stringify({
+                                Piece: object.data.pieceId
+                            });
+                            Quarto.socket().sendMessage(Quarto.constants.GamePieceChosen, pieceData);
                         }
                     }
                 }
-                );
+            );
+            drawnObjects[drawnObjects.length] = drawnObj;
+            drawnPieces[i] = drawnObj;
 
             y += 0.25;
             if (++z == 8) {
@@ -264,15 +252,9 @@
         }
     }
 
-    $(window).resize(function () {
-        context.canvas.width = window.innerWidth - 300;
-        context.canvas.height = window.innerHeight;
-        draw();
-    });
-
     function draw() {
         context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-        fullRadius = Math.min(context.canvas.width / 2, context.canvas.height / 2);
+        fullRadius = Math.min(context.canvas.width / 1.26 / 2, context.canvas.height / 2);
 
         context.lineWidth = fullRadius / 95.5;
         context.strokeStyle = '#003300';
@@ -282,33 +264,6 @@
             drawnObjects[i].draw();
             context.stroke();
         }
-
-        var x = 0;
-
-        var text;
-        switch (gameState) {
-            case game_state_no_player:
-            text = "Waiting for player to join";
-            x = context.canvas.width - 200;
-            break;
-            case game_state_choosing_piece:
-            text = "You are choosing a piece";
-            x = context.canvas.width - 190;
-            break;
-            case game_state_playing_piece:
-            text = "You are playing a piece";
-            x = context.canvas.width - 185;
-            break;
-            case game_state_waiting_for_piece:
-            text = "Waiting for piece from opponent";
-            x = context.canvas.width - 230;
-            break;
-            case game_state_waiting_for_play:
-            text = "Waiting for opponent to play";
-            x = context.canvas.width - 215;
-            break;
-        }
-        context.fillText("GameState: " + text, x, 10);
     }
 
     function checkForWinner() {
@@ -382,7 +337,13 @@
 
         function checkValues(square, hole, white, tall) {
             if (isFourOrZero(square) || isFourOrZero(hole) || isFourOrZero(white) || isFourOrZero(tall)) {
-                alert("Winner");
+                if (gameState == game_state_waiting_for_piece) {
+                    $('#dialog-message').text("You Lost!<br />");
+                    $("#popup").bPopup();
+                } else {
+                    $('#dialog-message').text("You Won!<br />");
+                    $("#popup").bPopup();
+                }
                 resetState();
                 draw();
                 return true;
@@ -396,8 +357,8 @@
     }
 
     function getLocationXandY(location) {
-        var loc = privateGetLocationXandY(location);
-        return [loc[0] + 0.6, loc[1]];
+        loc = privateGetLocationXandY(location);
+        return [loc[0] + 0.26, loc[1]];
     }
 
     function privateGetLocationXandY(location) {

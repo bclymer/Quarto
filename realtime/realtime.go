@@ -1,123 +1,173 @@
 package realtime
 
 import (
+	"encoding/json"
+	"log"
+	"quarto/constants"
 )
 
-type Event struct {
-	Action		string // any function to call on client side
-	Data		string // json string
-	Uuid		string // uuid of who is sending the message
-	ToUuid		string // uuid of whom the message is going to
+type NewUserInfoAndChannel struct {
+	User     chan *User
+	Username string
 }
 
-type Subscription struct {
-	New     <-chan Event // New events coming in.
-	Uuid	string
+type CheckUsername struct {
+	Username string
+	Valid    chan bool
 }
 
-type NewSubscription struct {
-	SubChan	chan Subscription
-	Uuid	string
+type RecievedEvent struct {
+	clientEvent ClientEvent
+	Username    string
 }
 
-// Owner of a subscription must cancel it when they stop listening to events.
-func (s Subscription) Cancel() {
-	unsubscribe <- s // Unsubscribe the channel.
-	drain(s.New)         // Drain it, just in case there was a pending publish.
+// Owner must cancel itself when they stop listening to events.
+func (user *User) Cancel() {
+	log.Println("+realtime.Cancel")
+	removeUserDTO, err := json.Marshal(RemoveUserDTO{user.Username})
+	if err != nil {
+		log.Fatal("Cancel: Couldn't marshal the thing")
+	}
+	clientEvent := ClientEvent{constants.Config.UserRemove, string(removeUserDTO)}
+	recievedEvent := RecievedEvent{clientEvent, user.Username}
+	recievedEventChannel <- &recievedEvent
+	log.Println("-realtime.Cancel")
 }
 
-func newEvent(action string, data string, uuid string, toUuid string) Event {
-	return Event{action, data, uuid, toUuid}
+func Subscribe(username string) *User {
+	log.Println("+realtime.Subscribe")
+	newUserInfoAndChannel := NewUserInfoAndChannel{make(chan *User), username}
+	subscribeChannel <- &newUserInfoAndChannel
+	log.Println("-realtime.Subscribe")
+	return <-newUserInfoAndChannel.User
 }
 
-func Subscribe(uuid string) Subscription {
-	resp := NewSubscription{ make(chan Subscription), uuid }
-	subscribe <- resp
-	return <-resp.SubChan
+func ServerSideAction(clientEvent ClientEvent, username string) {
+	log.Println("+realtime.ServerSideAction", clientEvent)
+	recievedEvent := RecievedEvent{clientEvent, username}
+	recievedEventChannel <- &recievedEvent
+	log.Println("-realtime.ServerSideAction")
 }
 
-func Join(uuid string) {
-	publish <- newEvent("joined", "", uuid, "")
+func GetUserMap() *map[string]*User {
+	userMapChannel := make(chan *map[string]*User)
+	getUserMapChannel <- userMapChannel
+	return <-userMapChannel
 }
 
-func Action(action string, data string, uuid string, toUuid string) {
-	publish <- newEvent(action, data, uuid, toUuid)
-}
-
-func Leave(uuid string) {
-	publish <- newEvent("left", "", uuid, "")
+func GetRoomMap() *map[string]*Room {
+	roomMapChannel := make(chan *map[string]*Room)
+	getRoomMapChannel <- roomMapChannel
+	return <-roomMapChannel
 }
 
 const archiveSize = 10
 
 var (
-	// Send a channel here to get room events back.  It will send the entire
-	// archive initially, and then new messages as they come in.
-	subscribe = make(chan NewSubscription, 10)
-	// Send a channel here to unsubscribe.
-	unsubscribe = make(chan Subscription, 10)
-	// Send events here to publish them.
-	publish = make(chan Event, 10)
-	// 
-	checkUsername = make(chan CheckUsername, 10)
+	recievedEventChannel = make(chan *RecievedEvent, 10)
+	subscribeChannel     = make(chan *NewUserInfoAndChannel, 10)
+	checkUsernameChannel = make(chan *CheckUsername, 10)
+	getUserMapChannel    = make(chan (chan *map[string]*User), 10)
+	getRoomMapChannel    = make(chan (chan *map[string]*Room), 10)
 )
 
-type CheckUsername struct {
-	uuid string
-	valid chan bool
-}
-
 func ValidateUsername(name string) bool {
+	log.Println("+realtime.ValidateUsername")
 	check := CheckUsername{name, make(chan bool)}
-	checkUsername <- check
-	return <-check.valid
+	checkUsernameChannel <- &check
+	log.Println("-realtime.ValidateUsername")
+	return <-check.Valid
 }
 
-// This function loops forever, handling the chat room pubsub
+// This function loops forever
 func realtime() {
-	subscribers := make(map[string]chan Event)
+
+	userMap := make(map[string]*User)
+	roomMap := make(map[string]*Room)
+
+	setupEventProcessor(&userMap, &roomMap)
+
 	for {
 		select {
-		case ch := <-subscribe:
-			subscriber := make(chan Event, 10)
-			subscribers[ch.Uuid] = subscriber
-			ch.SubChan <- Subscription{subscriber, ch.Uuid}
-		case event := <-publish:
-			// TODO: only send to channel of intended client, interating through sucks
-			if (event.ToUuid == "") {
-				for _, ch := range subscribers {
-					ch <- event
-				}
-			} else {
-				subscribers[event.ToUuid] <- event
+		case newUserInfoAndChannel := <-subscribeChannel:
+			log.Println("+subscribeChannel")
+			addUserDTO, err := json.Marshal(AddUserDTO{newUserInfoAndChannel.Username})
+			if err != nil {
+				log.Fatal("realtime: Couldn't marshal the thing")
+				return
 			}
-		case unsub := <-unsubscribe:
-			for uuid, _ := range subscribers {
-				if (uuid == unsub.Uuid) {
-					delete(subscribers, uuid)
-				}
+			user := AddUser(string(addUserDTO))
+			newUserInfoAndChannel.User <- user
+			log.Println("-subscribeChannel")
+		case recievedEvent := <-recievedEventChannel:
+			log.Println("+recievedEventChannel", recievedEvent)
+			clientEvent := recievedEvent.clientEvent
+			username := recievedEvent.Username
+			switch clientEvent.Action {
+			case constants.Config.UserAdd:
+				AddUser(clientEvent.Data)
+			case constants.Config.UserRemove:
+				RemoveUser(clientEvent.Data)
+			case constants.Config.UserChallenge:
+				UserChallengedUser(clientEvent.Data, username)
+			case constants.Config.UserRoomJoin:
+				JoinRoom(clientEvent.Data, username)
+			case constants.Config.UserRoomLeave:
+				LeaveRoom(username)
+			case constants.Config.RoomAdd:
+				AddRoom(clientEvent.Data, username)
+			case constants.Config.RoomRemove:
+				RemoveRoom(clientEvent.Data)
+			case constants.Config.RoomNameChange:
+				RoomNameChange(clientEvent.Data)
+			case constants.Config.RoomPrivacyChange:
+				RoomNameChange(clientEvent.Data)
+			case constants.Config.Chat:
+				Chat(clientEvent.Data, username)
+			case constants.Config.GamePlayerOneRequest:
+				RequestPlayerOne(username)
+			case constants.Config.GamePlayerTwoRequest:
+				RequestPlayerTwo(username)
+			case constants.Config.GamePlayerOneLeave:
+				LeavePlayerOne(username)
+			case constants.Config.GamePlayerTwoLeave:
+				LeavePlayerTwo(username)
+			case constants.Config.GamePiecePlayed:
+				GamePiecePlayed(clientEvent.Data, username)
+			case constants.Config.GamePieceChosen:
+				GamePieceChosen(clientEvent.Data, username)
 			}
-		case check := <-checkUsername:
-			check.valid <- subscribers[check.uuid] == nil
+			log.Println("-recievedEventChannel")
+		case check := <-checkUsernameChannel:
+			log.Println("+checkUsernameChannel")
+			check.Valid <- userMap[check.Username] == nil
+			log.Println("-checkUsernameChannel")
+		case userMapRequest := <-getUserMapChannel:
+			log.Println("+getUserMapChannel")
+			userMapRequest <- &userMap
+			log.Println("-getUserMapChannel")
+		case roomMapRequest := <-getRoomMapChannel:
+			log.Println("+getRoomMapChannel")
+			roomMapRequest <- &roomMap
+			log.Println("-getRoomMapChannel")
 		}
 	}
 }
 
+func GetRoomUserCount(room *Room) int {
+	log.Println("+realtime.GetRoomUserCount")
+	members := 0
+	if room.PlayerOne != nil {
+		members++
+	}
+	if room.PlayerTwo != nil {
+		members++
+	}
+	members += room.Observers.Len()
+	log.Println("-realtime.GetRoomUserCount")
+	return members
+}
 
 func init() {
 	go realtime()
-}
-
-// Drains a given channel of any messages.
-func drain(ch <-chan Event) {
-	for {
-		select {
-		case _, ok := <-ch:
-			if !ok {
-				return
-			}
-		default:
-			return
-		}
-	}
 }

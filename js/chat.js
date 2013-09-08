@@ -1,85 +1,126 @@
 (function ($) {
 
-	var chatTemplate = '<div class="message-container {2}"><span class="sender">{0}</span><span class="message"> - {1}</span></div>';
-	var opponent;
+	var chatTemplate = Handlebars.compile($("#chat-template").html());
 	var sendButton;
 	var chatInput;
 	var chatDiv;
+	var cachedEvents = [];
+	var loaded = false;
 	
 	Quarto.chat = (function() {
 
-		function attachEventsToGamePage() {
+		function start() {
+			loaded = true;
+			console.log("chat start()");
 			chatInput = $('#chat');
 			sendButton = $('#send');
 			chatDiv = $('#chat-div');
 
-			sendButton.click(function () {
-				Quarto.socket().sendMessage("chat", chatInput.val());
-				chatDiv.append(chatTemplate.replace("{0}", "You").replace("{1}", chatInput.val()).replace("{2}", "you"));
+			sendButton.on('click', function () {
+				var chatData = JSON.stringify({
+					Message: chatInput.val()
+				});
+				Quarto.socket().sendMessage(Quarto.constants.Chat, chatData);
 				scrollChatToBottom();
 				chatInput.val("");
 			});
 
 			chatInput.keydown(function (e) {
-				if (e.which == 13 && chatInput.val().length > 0 && opponent) {
+				if (e.which == 13 && chatInput.val().length > 0) {
 					sendButton.click();
 					return false;
 				}
 			});
 
-			chatInput.keyup(function (e) {
-				if (chatInput.val().length > 0 && opponent) {
+			chatInput.on('keyup', function (e) {
+				if (chatInput.val().length > 0) {
 					sendButton.removeClass("disabled");
 				} else {
 					sendButton.addClass("disabled");
 				}
 			});
+			
+			$.each(cachedEvents, function (index, data) {
+				applyMessage(data);
+			});
+			cachedEvents = [];
+
+			$(document).on('keydown', function(event) {
+				if (chatInput) {
+					chatInput.focus();
+				}
+			});
+
+			$(document).on(Quarto.constants.Chat, function (event, data) {
+				if (!chatDiv) {
+					cachedEvents.push(data)
+					return;
+				} else {
+					applyMessage(data);
+				}
+			});
+
+			$(document).on(Quarto.constants.UserRoomJoin, function (event, data) {
+				if (!chatDiv) return;
+				var message = {
+					Sender: "opponent",
+					Username: "System",
+					Message: data.Username + " joined the room."
+				}
+				chatDiv.append(chatTemplate(message));
+			});
+
+			$(document).on(Quarto.constants.UserRoomLeave, function (event, data) {
+				if (!chatDiv) return;
+				var message = {
+					Sender: "opponent",
+					Username: "System",
+					Message: data.Username + " left the room."
+				}
+				chatDiv.append(chatTemplate(message));
+			});
+		}
+
+		function stop() {
+			chatInput.off();
+			sendButton.off();
+			chatDiv.off();
+			$(document).off('keydown');
+			$(document).off(Quarto.constants.Chat);
+			$(document).off(Quarto.constants.UserRoomJoin);
+			$(document).off(Quarto.constants.UserRoomLeave);
+
+			cachedEvents = [];
+			chatInput = undefined;
+			sendButton = undefined;
+			chatDiv = undefined;
+			loaded = false;
+			console.log("chat stop()");
+		}
+
+		function isLoaded() {
+			return loaded;
 		}
 
 		return {
-			attachEventsToGamePage: attachEventsToGamePage
+			start: start,
+			stop: stop,
+			isLoaded: isLoaded,
 		}
 
 	});
 
-	$(document).on("keydown", function (event) {
-		chatInput.focus();
-	});
-
-	$(document).on("chat", function (event, data) {
-		chatDiv.append(chatTemplate.replace("{0}", opponent).replace("{1}", data.data).replace("{2}", "opponent"));
+	function applyMessage(data) {
+		if (!chatDiv) return;
+		data.Sender = (data.Username == Quarto.socket().getUsername()) ? "you" : "opponent";
+		chatDiv.append(chatTemplate(data));
 		scrollChatToBottom();
-	});
-
-	$(document).on("left", function (event, data) {
-		chatDiv.empty();
-	});
+	}
 
 	function scrollChatToBottom() {
+		if (!chatDiv) return;
 		var chatDiv = document.getElementById("chat-div");
 		chatDiv.scrollTop = chatDiv.scrollHeight;
 	}
-
-	$(document).on("accept", function (event, data) {
-		chatDiv.empty();
-		chatDiv.append(chatTemplate.replace("{0}", "System").replace("{1}", data.data + " has joined your game.").replace("{2}", "opponent"));
-	});
-
-	$(document).on("joined", function (event, data) {
-		chatDiv.empty();
-		chatDiv.append(chatTemplate.replace("{0}", "System").replace("{1}", data.Uuid + " has joined your game.").replace("{2}", "opponent"));
-	});
-
-	$(document).on("joined", function (event, data) {
-		opponent = data.Uuid;
-	});
-
-	$(document).on("accept", function (event, data) {
-		opponent = data.data;
-	});
-
-	$(document).on("left", function (event, data) {
-		opponent = undefined;
-	});
 
 })(jQuery);
