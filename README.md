@@ -8,10 +8,15 @@ I hadn't done much web dev, so I did this to get familiar with some things I was
 Things I Used
 ======
 The game itself uses a canvas to draw on.
+
 All the game logic is done server side using Go.
+
 I'm using bootstrap, because design is hard...
+
 Handlebars for partials I use a lot (chat, table rows).
+
 Websockets, which I think are awesome.
+
 
 Misc
 ======
