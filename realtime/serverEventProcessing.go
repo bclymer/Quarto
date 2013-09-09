@@ -165,8 +165,8 @@ func LeaveRoom(username string) {
 		}
 		clientEvent := ClientEvent{constants.Config.RoomChange, roomRoomString}
 		sendEventToRoom(&clientEvent, room)
-		user.Room.UpdateGame()
-		updateGameForRoom(user.Room)
+		room.UpdateGame()
+		updateGameForRoom(room)
 	}
 
 	userRoomString, err := DtoToString(UserRoomDTO{username, room.Name})
