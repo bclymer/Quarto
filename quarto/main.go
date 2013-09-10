@@ -120,12 +120,19 @@ func configJs(w http.ResponseWriter, r *http.Request) {
 	constants.Init()
 	constantsStr, _ := json.Marshal(constants.Config)
 
-	cookie, _ := r.Cookie("quarto")
-	mongoUser := realtime.FindUser(cookie.Value)
-
 	jsResponse := configJsConst
-	if mongoUser != nil {
-		jsResponse = strings.Replace(jsResponse, "{{Username}}", mongoUser.Username, -1)
+
+	cookie, err := r.Cookie("quarto")
+	if err == nil {
+		mongoUser := realtime.FindUser(cookie.Value)
+		if mongoUser.Username != "" {
+			jsResponse = strings.Replace(jsResponse, "{{Username}}", "\""+mongoUser.Username+"\"", -1)
+		} else {
+			jsResponse = strings.Replace(jsResponse, "{{Username}}", "undefined", -1)
+		}
+	} else {
+		log.Println(err)
+		jsResponse = strings.Replace(jsResponse, "{{Username}}", "undefined", -1)
 	}
 
 	w.Header().Set("Content-Type", "text/javascript")
@@ -134,7 +141,7 @@ func configJs(w http.ResponseWriter, r *http.Request) {
 
 const configJsConst = `(function () {
 	Quarto.constants = {{Config}};
-	Quarto.username = "{{Username}}";
+	Quarto.username = {{Username}};
 })();
 `
 

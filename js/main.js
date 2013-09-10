@@ -1,7 +1,7 @@
 (function ($) {
 
 	$(document).ready(function () {
-		if (Quarto.username != "") {
+		if (Quarto.username != undefined) {
 			Quarto.socket().makeConnection(Quarto.username, function() {
 				Quarto.main().loadWaitingRoomHTML();
 			});
