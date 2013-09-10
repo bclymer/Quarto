@@ -73,6 +73,10 @@
 				Quarto.main().loadGameHTML();
 			});
 
+			$('#logout').on('click', function () {
+				console.log("Logout!");
+			});
+
 			$(document).on(Quarto.constants.RoomAdd, function(event, room) {
 				if ($('#rooms-table [data-room-name="' + room.Name + '"]').length > 0) return;
 
