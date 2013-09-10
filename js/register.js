@@ -31,7 +31,7 @@
 			$('#register').hide();
 			$('#register').slideDown(500);
 			$('#submit-username').on("click", function() {
-				$.get("validate?uuid=" + username.val(),
+				$.get("validate?username=" + username.val(),
 					function(data) {
 						if (data.Valid) {
 							Quarto.socket().makeConnection(username.val(), function() {

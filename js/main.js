@@ -1,7 +1,13 @@
 (function ($) {
 
 	$(document).ready(function () {
-		Quarto.main().loadRegisterHTML();
+		if (Quarto.username != "") {
+			Quarto.socket().makeConnection(Quarto.username, function() {
+				Quarto.main().loadWaitingRoomHTML();
+			});
+		} else {
+			Quarto.main().loadRegisterHTML();
+		}
 
 		toastr.options = {
             "debug": false,

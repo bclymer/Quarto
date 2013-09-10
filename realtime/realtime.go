@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"quarto/constants"
+	"strings"
 )
 
 type NewUserInfoAndChannel struct {
@@ -71,12 +72,21 @@ var (
 	getRoomMapChannel    = make(chan (chan *map[string]*Room), 10)
 )
 
-func ValidateUsername(name string) bool {
+func ValidateUsername(name string) (bool, string) {
 	log.Println("+realtime.ValidateUsername")
+	if strings.TrimSpace(name) == "" {
+		return false, ""
+	}
 	check := CheckUsername{name, make(chan bool)}
 	checkUsernameChannel <- &check
 	log.Println("-realtime.ValidateUsername")
-	return <-check.Valid
+	valid := <-check.Valid
+	if valid {
+		mongoUser := InsertUser(NewMongoUser(name))
+		return true, mongoUser.Token
+	} else {
+		return false, ""
+	}
 }
 
 // This function loops forever

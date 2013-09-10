@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"quarto/constants"
+	"strings"
 )
 
 var (
@@ -210,6 +211,10 @@ func AddRoom(addRoomMessage, username string) {
 	}
 	if _, ok = roomMap[addRoomDTO.Name]; ok {
 		sendErrorToUser(user, "A room with the name "+addRoomDTO.Name+" already exists.")
+		return
+	}
+	if strings.TrimSpace(addRoomDTO.Name) == "" {
+		sendErrorToUser(user, "The room name can't be blank")
 		return
 	}
 	room := Room{nil, nil, list.New(), list.New(), addRoomDTO.Name, addRoomDTO.Private, addRoomDTO.Password, MakeNewGame()}

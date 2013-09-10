@@ -4,7 +4,6 @@ import (
 	"code.google.com/p/go.net/websocket"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"quarto/constants"
@@ -65,7 +64,6 @@ func realtimeHost(ws *websocket.Conn) {
 			realtime.ServerSideAction(requestData, username)
 		}
 	}
-
 	return
 }
 
@@ -75,10 +73,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 func validateUsername(w http.ResponseWriter, r *http.Request) {
 	log.Println("main.validateUsername")
-	valid := realtime.ValidateUsername(r.FormValue("uuid"))
-	test := Success{Valid: valid}
-	response, _ := json.Marshal(test)
+	valid, token := realtime.ValidateUsername(r.FormValue("username"))
+	validDto := Success{Valid: valid}
+	response, _ := json.Marshal(validDto)
 	w.Header().Set("Content-Type", "application/json")
+	http.SetCookie(w, &http.Cookie{Name: "quarto", Value: token})
 	fmt.Fprint(w, string(response))
 }
 
@@ -118,30 +117,35 @@ type config struct {
 }
 
 func configJs(w http.ResponseWriter, r *http.Request) {
-	t := template.New("")
-	t, _ = t.Parse(conficJs)
 	constants.Init()
 	constantsStr, _ := json.Marshal(constants.Config)
+
+	cookie, _ := r.Cookie("quarto")
+	mongoUser := realtime.FindUser(cookie.Value)
+
+	jsResponse := configJsConst
+	if mongoUser != nil {
+		jsResponse = strings.Replace(jsResponse, "{{Username}}", mongoUser.Username, -1)
+	}
+
 	w.Header().Set("Content-Type", "text/javascript")
-	fmt.Fprint(w, strings.Replace(conficJs, "{{Config}}", string(constantsStr), -1))
+	fmt.Fprint(w, strings.Replace(jsResponse, "{{Config}}", string(constantsStr), -1))
 }
 
-const conficJs = `(function () {
+const configJsConst = `(function () {
 	Quarto.constants = {{Config}};
+	Quarto.username = "{{Username}}";
 })();
 `
 
-func test(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{Name: "cookie-1", Value: "one"})
-	fmt.Fprint(w, "Yup")
-}
-
 func main() {
+	session := realtime.ConnectMongo()
+	defer session.Close()
+
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/validate", validateUsername)
 	http.HandleFunc("/rooms", rooms)
 	http.HandleFunc("/users", users)
-	http.HandleFunc("/test", test)
 	http.HandleFunc("/js/constants.js", configJs)
 	http.Handle("/realtime", websocket.Handler(realtimeHost))
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("../js"))))
