@@ -179,7 +179,7 @@ func main() {
 	http.ListenAndServe(":8080", nil)
 }
 
-const profileInfoURL = "https://www.googleapis.com/auth2/v1/userinfo"
+const profileInfoURL = "https://www.googleapis.com/oauth2/v1/userinfo"
 const port = ":8080"
 
 func login(w http.ResponseWriter, r *http.Request) {
