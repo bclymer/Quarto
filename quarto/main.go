@@ -2,6 +2,7 @@ package main
 
 import (
 	"code.google.com/p/go.net/websocket"
+	"code.google.com/p/goauth2/oauth"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"quarto/constants"
 	"quarto/realtime"
 	"strings"
+	"text/template"
 )
 
 type Page struct {
@@ -145,15 +147,30 @@ const configJsConst = `(function () {
 })();
 `
 
+var oauthCfg = &oauth.Config{}
+
 func main() {
 	session := realtime.ConnectMongo()
 	defer session.Close()
+
+	oauth := realtime.FetchOauth()
+	oauthCfg.ClientId = oauth.ClientId
+	oauthCfg.ClientSecret = oauth.ClientId
+	oauthCfg.AuthURL = oauth.AuthURL
+	oauthCfg.TokenURL = oauth.TokenURL
+	oauthCfg.RedirectURL = oauth.RedirectURL
+	oauthCfg.Scope = oauth.Scope
 
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/validate", validateUsername)
 	http.HandleFunc("/rooms", rooms)
 	http.HandleFunc("/users", users)
 	http.HandleFunc("/js/constants.js", configJs)
+
+	http.HandleFunc("/oauth2callback", handleOAuth2Callback)
+	http.HandleFunc("/authorize", handleAuthorize)
+	http.HandleFunc("/login", login)
+
 	http.Handle("/realtime", websocket.Handler(realtimeHost))
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("../js"))))
 	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("../css"))))
@@ -161,3 +178,49 @@ func main() {
 	http.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(http.Dir("../fonts"))))
 	http.ListenAndServe(":8080", nil)
 }
+
+const profileInfoURL = "https://www.googleapis.com/auth2/v1/userinfo"
+const port = ":8080"
+
+func login(w http.ResponseWriter, r *http.Request) {
+	notAuthenticatedTemplate.Execute(w, nil)
+}
+
+func handleAuthorize(w http.ResponseWriter, r *http.Request) {
+	//Get the Google URL which shows the Authentication page to the user
+	url := oauthCfg.AuthCodeURL("")
+
+	// redirect user to that page
+	http.Redirect(w, r, url, http.StatusFound)
+}
+
+func handleOAuth2Callback(w http.ResponseWriter, r *http.Request) {
+	//Get the code from the response
+	code := r.FormValue("code")
+
+	t := &oauth.Transport{oauthCfg, nil, nil}
+
+	// Exchange the received code for a token
+	t.Exchange(code)
+
+	// now get user data based on the Transport which has the token
+	resp, _ := t.Client().Get(profileInfoURL)
+
+	buf := make([]byte, 1024)
+	resp.Body.Read(buf)
+	userInfoTemplate.Execute(w, string(buf))
+}
+
+var userInfoTemplate = template.Must(template.New("").Parse(`
+<html><body>
+This app is now authenticated to access your Google user info.  Your details are:<br />
+{{.}}
+</body></html>
+`))
+
+var notAuthenticatedTemplate = template.Must(template.New("").Parse(`
+<html><body>
+You have currently not given permissions to access your data. Please authenticate this app with the Google OAuth provider.
+<form action="/authorize" method="POST"><input type="submit" value="Ok, authorize this app with my id"/></form>
+</body></html>
+`))

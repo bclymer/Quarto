@@ -117,3 +117,14 @@ h2 {
 	top: 0px;
 	left: 300px;
 }
+
+.create-room {
+	width: 295px;
+	height: 135px;
+	left: 0;
+	right: 0;
+	top:0;
+	bottom: 0;
+	position: absolute;
+    margin: auto;
+}

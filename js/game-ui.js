@@ -43,6 +43,11 @@
                 });
             });
 
+			$(document).on(Quarto.constants.GameWinner, function (event, data) {
+				$('#dialog-message').text(data.Winner + " won!");
+				$('#popup').bPopup();
+			});
+
 			$(document).on(Quarto.constants.GameChange, function (event, data) {
 				var gameStateText;
             	switch(data.GameState) {
@@ -93,7 +98,8 @@
 			playerTwo = undefined;
 			private = undefined;
 			observers = undefined;
-			$(document).off(Quarto.constants.RoomChange);
+			$(document).off(Quarto.constants.RoomChange)
+						.off(Quarto.constants.GameWinner);
 			$('#game-div').off('click');
 			$('#leave-room').off('click');
 			loaded = false;

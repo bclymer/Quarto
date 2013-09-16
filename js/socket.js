@@ -22,12 +22,10 @@
 			};
 			socket.onopen = onOpen();
 			socket.onclose = function () {
-				toastr.error("Lost Connection to Server");
 				Quarto.main().loadRegisterHTML();
 			};
 			socket.onerror = function() {
 				toastr.error("Lost Connection to Server");
-				Quarto.main().loadRegisterHTML();
 				socket.close();
 			};
 		}
@@ -43,6 +41,11 @@
 
 		function getUsername() {
 			return username;
+		}
+
+		function disconnect() {
+			socket.close();
+			document.cookie = undefined;
 		}
 
 		return {

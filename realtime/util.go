@@ -16,3 +16,11 @@ func Remove(array []int, find int) {
 		}
 	}
 }
+
+func intForBool(value bool) int {
+	if value {
+		return 1
+	} else {
+		return 0
+	}
+}

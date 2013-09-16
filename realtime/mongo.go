@@ -27,6 +27,15 @@ type MongoGame struct {
 	Opponent string `bson:"o"`
 }
 
+type OAuthConstants struct {
+	ClientId     string `bson:"cid"`
+	ClientSecret string `bson:"cs"`
+	AuthURL      string `bson:"aurl"`
+	TokenURL     string `bson:"turl"`
+	RedirectURL  string `bson:"rurl"`
+	Scope        string `bson:"s"`
+}
+
 func NewMongoUser(username string) *MongoUser {
 	return &MongoUser{bson.NewObjectId(), username, "", make([]MongoGame, 0)}
 }
@@ -39,6 +48,12 @@ func ConnectMongo() *mgo.Session {
 	database = session.DB("quarto")
 	users = database.C("users")
 	return session
+}
+
+func FetchOauth() *OAuthConstants {
+	oauth := OAuthConstants{}
+	database.C("oauth").Find(nil).One(&oauth)
+	return &oauth
 }
 
 func InsertUser(mongoUser *MongoUser) *MongoUser {

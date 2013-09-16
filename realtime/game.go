@@ -1,6 +1,8 @@
 package realtime
 
-import ()
+import (
+	"log"
+)
 
 type Game struct {
 	GameState       int
@@ -74,13 +76,115 @@ func (game *Game) Reset() {
 	game.SelectedPiece = -1
 }
 
-func (game *Game) CheckWinner() int {
+func whoIsWinning(game *Game) int {
+	if game.GameState == GameStatePlayerOneChoosing {
+		return 1
+	} else if game.GameState == GameStatePlayerTwoChoosing {
+		return 2
+	} else {
+		log.Fatal("Shouldn't check winner with this state")
+		return 0
+	}
+}
 
+func (game *Game) CheckWinner() int {
+	if checkSequence(func(i, j int) int {
+		return i*4 + j
+	}, game) {
+		return whoIsWinning(game)
+	}
+	if checkSequence(func(i, j int) int {
+		return j*4 + i
+	}, game) {
+		return whoIsWinning(game)
+	}
+	{ // limit scope
+		square, hole, white, tall := 10, 10, 10, 10
+		for j := 0; j < 16; j += 5 {
+			pieceId := game.Board[j]
+			if pieceId == -1 {
+				square = 0
+				hole = 0
+				white = 0
+				tall = 0
+				break
+			}
+			piece := pieces[pieceId]
+			square += intForBool(piece.Square)
+			hole += intForBool(piece.Hole)
+			white += intForBool(piece.White)
+			tall += intForBool(piece.Tall)
+		}
+		if checkValues(square, hole, white, tall) {
+			return whoIsWinning(game)
+		}
+	}
+
+	{ // limit scope
+		square, hole, white, tall := 10, 10, 10, 10
+		for j := 0; j < 5; j++ {
+			pieceId := game.Board[j]
+			if pieceId == -1 {
+				square = 0
+				hole = 0
+				white = 0
+				tall = 0
+				break
+			}
+			piece := pieces[pieceId]
+			square += intForBool(piece.Square)
+			hole += intForBool(piece.Hole)
+			white += intForBool(piece.White)
+			tall += intForBool(piece.Tall)
+		}
+		if checkValues(square, hole, white, tall) {
+			return whoIsWinning(game)
+		}
+	}
 	return 0
+}
+
+type locationFunction func(int, int) int
+
+func checkSequence(locationFunction locationFunction, game *Game) bool {
+	for i := 0; i < 4; i++ {
+		square, hole, white, tall := 10, 10, 10, 10
+		for j := 0; j < 4; j++ {
+			pieceId := game.Board[locationFunction(i, j)]
+			if pieceId == -1 {
+				square = 0
+				hole = 0
+				white = 0
+				tall = 0
+				break
+			}
+			piece := pieces[pieceId]
+			square += intForBool(piece.Square)
+			hole += intForBool(piece.Hole)
+			white += intForBool(piece.White)
+			tall += intForBool(piece.Tall)
+		}
+		if checkValues(square, hole, white, tall) {
+			return true
+		}
+	}
+	return false
+}
+
+func checkValues(square, hole, white, tall int) bool {
+	if isSameKind(square) || isSameKind(hole) || isSameKind(white) || isSameKind(tall) {
+		return true
+	}
+	return false
+}
+
+func isSameKind(num int) bool {
+	return num == 10 || num == 14
 }
 
 func (room *Room) UpdateGame() {
 	if room.Game.GameState == GameStateNoPlayers && room.PlayerOne != nil && room.PlayerTwo != nil {
+		room.Game.Reset()
 		room.Game.GameState = GameStatePlayerOneChoosing
 	} else if room.PlayerOne == nil || room.PlayerTwo == nil {
 		room.Game.GameState = GameStateNoPlayers

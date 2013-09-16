@@ -134,7 +134,7 @@ type InfoOrErrorMessageDTO struct {
 }
 
 type GameWinnerDTO struct {
-	Winner int
+	Winner string
 }
 
 func DtoToString(thing interface{}) (string, error) {
