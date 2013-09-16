@@ -3,8 +3,10 @@ package main
 import (
 	"code.google.com/p/go.net/websocket"
 	"code.google.com/p/goauth2/oauth"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"quarto/constants"
@@ -198,17 +200,35 @@ func handleOAuth2Callback(w http.ResponseWriter, r *http.Request) {
 	//Get the code from the response
 	code := r.FormValue("code")
 
-	t := &oauth.Transport{oauthCfg, nil, nil}
+	t := &oauth.Transport{Config: oauthCfg}
 
-	// Exchange the received code for a token
-	t.Exchange(code)
+	tok, _ := t.Exchange(code)
+	{
+		tokenCache := oauth.CacheFile("./request.token")
 
-	// now get user data based on the Transport which has the token
-	resp, _ := t.Client().Get(profileInfoURL)
+		err := tokenCache.PutToken(tok)
+		if err != nil {
+			log.Fatal("Cache write:", err)
+		}
+		log.Printf("Token is cached in %v\n", tokenCache)
+	}
 
-	buf := make([]byte, 1024)
-	resp.Body.Read(buf)
-	userInfoTemplate.Execute(w, string(buf))
+	// Skip TLS Verify
+	t.Transport = &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	// Make the request.
+	req, err := t.Client().Get(profileInfoURL)
+	if err != nil {
+		log.Fatal("Request Error:", err)
+	}
+	defer req.Body.Close()
+
+	body, _ := ioutil.ReadAll(req.Body)
+
+	log.Println(string(body))
+	userInfoTemplate.Execute(w, string(body))
 }
 
 var userInfoTemplate = template.Must(template.New("").Parse(`
