@@ -26,7 +26,11 @@ func AddUser(addUserMessage string) *User {
 		log.Println("AddUser: Couldn't unmarshal", addUserMessage, err)
 		return nil
 	}
-	user := User{addUserDTO.Username, nil, make(chan *ClientEvent, 10)}
+	if _, ok := userMap[addUserDTO.Username]; ok {
+		return nil
+	}
+
+	user := User{addUserDTO.Username, nil, make(chan *ClientEvent), false}
 
 	userMap[addUserDTO.Username] = &user
 
@@ -34,6 +38,7 @@ func AddUser(addUserMessage string) *User {
 
 	sendEventToLobby(&clientEvent)
 	log.Println("-AddUser")
+	user.Active = true
 	return &user
 }
 
@@ -51,7 +56,7 @@ func RemoveUser(removeUserMessage string) {
 	if !ok {
 		return
 	}
-
+	user.Active = false
 	if user.Room != nil {
 		LeaveRoom(removeUserDTO.Username)
 	}
@@ -522,26 +527,30 @@ func RemoveFromObservers(user *User) {
 
 func sendEventToLobby(clientEvent *ClientEvent) {
 	for _, user := range userMap {
-		if user.Room == nil {
+		if user.Room == nil && user.Active {
 			user.Events <- clientEvent
 		}
 	}
 }
 
 func sendEventToRoom(clientEvent *ClientEvent, room *Room) {
-	if room.PlayerOne != nil {
+	if room.PlayerOne != nil && room.PlayerOne.Active {
 		room.PlayerOne.Events <- clientEvent
 	}
-	if room.PlayerTwo != nil {
+	if room.PlayerTwo != nil && room.PlayerTwo.Active {
 		room.PlayerTwo.Events <- clientEvent
 	}
 	for observer := room.Observers.Front(); observer != nil; observer = observer.Next() {
-		observer.Value.(*User).Events <- clientEvent
+		if observer.Value.(*User).Active {
+			observer.Value.(*User).Events <- clientEvent
+		}
 	}
 }
 
 func sendEventToUser(clientEvent *ClientEvent, user *User) {
-	user.Events <- clientEvent
+	if user.Active {
+		user.Events <- clientEvent
+	}
 }
 
 func sendInfoToUser(user *User, message string) {

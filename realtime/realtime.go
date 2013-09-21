@@ -27,7 +27,7 @@ func (user *User) Cancel() {
 	log.Println("+realtime.Cancel")
 	removeUserDTO, err := json.Marshal(RemoveUserDTO{user.Username})
 	if err != nil {
-		log.Fatal("Cancel: Couldn't marshal the thing")
+		log.Fatal("Cancel: Couldn't marshal the thing", err)
 	}
 	clientEvent := ClientEvent{constants.Config.UserRemove, string(removeUserDTO)}
 	recievedEvent := RecievedEvent{clientEvent, user.Username}
@@ -39,8 +39,9 @@ func Subscribe(username string) *User {
 	log.Println("+realtime.Subscribe")
 	newUserInfoAndChannel := NewUserInfoAndChannel{make(chan *User), username}
 	subscribeChannel <- &newUserInfoAndChannel
+	user := <-newUserInfoAndChannel.User
 	log.Println("-realtime.Subscribe")
-	return <-newUserInfoAndChannel.User
+	return user
 }
 
 func ServerSideAction(clientEvent ClientEvent, username string) {
@@ -62,14 +63,12 @@ func GetRoomMap() *map[string]*Room {
 	return <-roomMapChannel
 }
 
-const archiveSize = 10
-
 var (
-	recievedEventChannel = make(chan *RecievedEvent, 10)
-	subscribeChannel     = make(chan *NewUserInfoAndChannel, 10)
-	checkUsernameChannel = make(chan *CheckUsername, 10)
-	getUserMapChannel    = make(chan (chan *map[string]*User), 10)
-	getRoomMapChannel    = make(chan (chan *map[string]*Room), 10)
+	recievedEventChannel = make(chan *RecievedEvent)
+	subscribeChannel     = make(chan *NewUserInfoAndChannel)
+	checkUsernameChannel = make(chan *CheckUsername)
+	getUserMapChannel    = make(chan (chan *map[string]*User))
+	getRoomMapChannel    = make(chan (chan *map[string]*Room))
 )
 
 func ValidateUsername(name string) (bool, string) {

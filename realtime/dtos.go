@@ -20,6 +20,7 @@ type User struct {
 	Username string            // selected username
 	Room     *Room             // room the user is in.
 	Events   chan *ClientEvent // event channel to send messages to user
+	Active   bool
 }
 
 type AddUserDTO struct {

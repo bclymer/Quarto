@@ -17,9 +17,7 @@
 		}
 
 		return {
-			simulateUsers: simulateUsers,
-			joinRoom: joinRoom,
-			addRoom: addRoom
+			simulateUsers: simulateUsers
 		}
 	});
 

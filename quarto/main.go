@@ -32,6 +32,9 @@ func realtimeHost(ws *websocket.Conn) {
 	username := ws.Request().URL.Query().Get("username")
 
 	user := realtime.Subscribe(username)
+	if user == nil {
+		return
+	}
 	defer user.Cancel()
 
 	newMessages := make(chan string, 10)
@@ -40,6 +43,7 @@ func realtimeHost(ws *websocket.Conn) {
 		for {
 			err := websocket.Message.Receive(ws, &msg)
 			if err != nil {
+				user.Active = false
 				close(newMessages)
 				return
 			}
@@ -52,11 +56,13 @@ func realtimeHost(ws *websocket.Conn) {
 		case event := <-user.Events:
 			if websocket.JSON.Send(ws, &event) != nil {
 				// They disconnected.
+				user.Active = false
 				return
 			}
 		case msg, ok := <-newMessages:
 			// If the channel is closed, they disconnected.
 			if !ok {
+				user.Active = false
 				return
 			}
 
@@ -155,13 +161,16 @@ func main() {
 	session := realtime.ConnectMongo()
 	defer session.Close()
 
-	oauth := realtime.FetchOauth()
-	oauthCfg.ClientId = oauth.ClientId
-	oauthCfg.ClientSecret = oauth.ClientId
-	oauthCfg.AuthURL = oauth.AuthURL
-	oauthCfg.TokenURL = oauth.TokenURL
-	oauthCfg.RedirectURL = oauth.RedirectURL
-	oauthCfg.Scope = oauth.Scope
+	mongoOauth := realtime.FetchOauth()
+	oauthCfg = &oauth.Config{
+		ClientId:     mongoOauth.ClientId,
+		ClientSecret: mongoOauth.ClientSecret,
+		RedirectURL:  mongoOauth.RedirectURL,
+		Scope:        mongoOauth.Scope,
+		AuthURL:      mongoOauth.AuthURL,
+		TokenURL:     mongoOauth.TokenURL,
+		TokenCache:   oauth.CacheFile("cache.json"),
+	}
 
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/validate", validateUsername)
@@ -202,21 +211,27 @@ func handleOAuth2Callback(w http.ResponseWriter, r *http.Request) {
 
 	t := &oauth.Transport{Config: oauthCfg}
 
-	tok, _ := t.Exchange(code)
-	{
-		tokenCache := oauth.CacheFile("./request.token")
-
-		err := tokenCache.PutToken(tok)
+	tok, err := oauthCfg.TokenCache.Token()
+	if err != nil {
+		tok, err = t.Exchange(code)
 		if err != nil {
-			log.Fatal("Cache write:", err)
+			log.Fatal("Exchange:", err)
 		}
-		log.Printf("Token is cached in %v\n", tokenCache)
+		{
+			err := oauthCfg.TokenCache.PutToken(tok)
+			if err != nil {
+				log.Fatal("Cache write:", err)
+			}
+			log.Printf("Token is cached in %v\n", oauthCfg.TokenCache)
+		}
+
+		// Skip TLS Verify
+		t.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
 	}
 
-	// Skip TLS Verify
-	t.Transport = &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
+	t.Token = tok
 
 	// Make the request.
 	req, err := t.Client().Get(profileInfoURL)
@@ -228,15 +243,8 @@ func handleOAuth2Callback(w http.ResponseWriter, r *http.Request) {
 	body, _ := ioutil.ReadAll(req.Body)
 
 	log.Println(string(body))
-	userInfoTemplate.Execute(w, string(body))
+	fmt.Fprintf(w, string(body))
 }
-
-var userInfoTemplate = template.Must(template.New("").Parse(`
-<html><body>
-This app is now authenticated to access your Google user info.  Your details are:<br />
-{{.}}
-</body></html>
-`))
 
 var notAuthenticatedTemplate = template.Must(template.New("").Parse(`
 <html><body>
