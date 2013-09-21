@@ -41,7 +41,7 @@ func NewMongoUser(username string) *MongoUser {
 }
 
 func ConnectMongo() *mgo.Session {
-	session, err := mgo.Dial("bclymer.unl.edu")
+	session, err := mgo.Dial("bclymer.com")
 	if err != nil {
 		panic(err)
 	}

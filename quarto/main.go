@@ -174,6 +174,9 @@ func main() {
 		TokenCache:   oauth.CacheFile("cache.json"),
 	}
 
+	redis := realtime.ConnectRedis()
+	defer redis.Close()
+
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/validate", validateUsername)
 	http.HandleFunc("/rooms", rooms)
