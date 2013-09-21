@@ -31,6 +31,7 @@ func (user *User) Cancel() {
 	}
 	clientEvent := ClientEvent{constants.Config.UserRemove, string(removeUserDTO)}
 	recievedEvent := RecievedEvent{clientEvent, user.Username}
+	user.Active = false
 	recievedEventChannel <- &recievedEvent
 	log.Println("-realtime.Cancel")
 }
@@ -113,8 +114,6 @@ func realtime() {
 			clientEvent := recievedEvent.clientEvent
 			username := recievedEvent.Username
 			switch clientEvent.Action {
-			case constants.Config.UserAdd:
-				AddUser(clientEvent.Data)
 			case constants.Config.UserRemove:
 				RemoveUser(clientEvent.Data)
 			case constants.Config.UserChallenge:

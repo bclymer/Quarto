@@ -102,6 +102,7 @@ func rooms(w http.ResponseWriter, r *http.Request) {
 		i++
 	}
 	serializedRooms, _ := json.Marshal(roomList)
+	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(w, string(serializedRooms))
 }
 
@@ -119,6 +120,7 @@ func users(w http.ResponseWriter, r *http.Request) {
 		i = i + 1
 	}
 	serializedUsers, _ := json.Marshal(userList)
+	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(w, string(serializedUsers))
 }
 

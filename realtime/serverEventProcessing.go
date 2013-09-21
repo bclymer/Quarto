@@ -34,9 +34,9 @@ func AddUser(addUserMessage string) *User {
 
 	userMap[addUserDTO.Username] = &user
 
-	clientEvent := ClientEvent{constants.Config.UserAdd, addUserMessage}
+	//clientEvent := ClientEvent{constants.Config.UserAdd, addUserMessage}
 
-	sendEventToLobby(&clientEvent)
+	//sendEventToLobby(&clientEvent)
 	log.Println("-AddUser")
 	user.Active = true
 	return &user
@@ -50,7 +50,6 @@ func RemoveUser(removeUserMessage string) {
 		log.Println("RemoveUser: Couldn't unmarshal", removeUserMessage, err)
 		return
 	}
-	clientEvent := ClientEvent{constants.Config.UserRemove, removeUserMessage}
 
 	user, _, ok := validateUserOrRoom(removeUserDTO.Username, "", "RemoveUser", false)
 	if !ok {
@@ -61,7 +60,9 @@ func RemoveUser(removeUserMessage string) {
 		LeaveRoom(removeUserDTO.Username)
 	}
 	delete(userMap, removeUserDTO.Username)
-	sendEventToLobby(&clientEvent)
+
+	//clientEvent := ClientEvent{constants.Config.UserRemove, removeUserMessage}
+	//sendEventToLobby(&clientEvent)
 	close(user.Events)
 	log.Println("-RemoveUser")
 }
@@ -86,23 +87,23 @@ func JoinRoom(joinRoomMessage, username string) {
 	user.Room = room
 	room.Observers.PushBack(user)
 
-	userRoomString, err := DtoToString(UserRoomDTO{username, room.Name})
-	if err != nil {
-		log.Println("JoinRoom: Couldn't marshal.", err)
-		sendErrorToUser(user, "")
-		return
-	}
+	// userRoomString, err := DtoToString(UserRoomDTO{username, room.Name})
+	// if err != nil {
+	// 	log.Println("JoinRoom: Couldn't marshal.", err)
+	// 	sendErrorToUser(user, "")
+	// 	return
+	// }
 
-	lobbyUserEvent := ClientEvent{constants.Config.UserRoomJoin, userRoomString}
-	sendEventToLobby(&lobbyUserEvent)
+	// lobbyUserEvent := ClientEvent{constants.Config.UserRoomJoin, userRoomString}
+	// sendEventToLobby(&lobbyUserEvent)
 
-	lobbyRoomString, err := DtoToString(MakeLobbyRoomDTO(room))
-	if err != nil {
-		log.Println("JoinRoom: Couldn't marshal.", err)
-		return
-	}
-	lobbyRoomEvent := ClientEvent{constants.Config.RoomChange, lobbyRoomString}
-	sendEventToLobby(&lobbyRoomEvent)
+	// lobbyRoomString, err := DtoToString(MakeLobbyRoomDTO(room))
+	// if err != nil {
+	// 	log.Println("JoinRoom: Couldn't marshal.", err)
+	// 	return
+	// }
+	// lobbyRoomEvent := ClientEvent{constants.Config.RoomChange, lobbyRoomString}
+	// sendEventToLobby(&lobbyRoomEvent)
 
 	roomRoomString, err := DtoToString(MakeRoomRoomDTO(room))
 	if err != nil {
@@ -168,7 +169,7 @@ func LeaveRoom(username string) {
 		return
 	}
 	clientEvent := ClientEvent{constants.Config.UserRoomLeave, userRoomString}
-	sendEventToLobby(&clientEvent)
+	//sendEventToLobby(&clientEvent)
 	sendEventToRoom(&clientEvent, room)
 
 	if GetRoomUserCount(room) == 0 {
@@ -213,13 +214,13 @@ func AddRoom(addRoomMessage, username string) {
 	roomMap[addRoomDTO.Name] = &room
 	user.Room = &room
 
-	lobbyRoomString, err := DtoToString(LobbyRoomDTO{addRoomDTO.Name, addRoomDTO.Private, 1})
-	if err != nil {
-		log.Println("AddRoom: Couldn't marshal.", err)
-		return
-	}
-	addRoomClientEvent := ClientEvent{constants.Config.RoomAdd, lobbyRoomString}
-	sendEventToLobby(&addRoomClientEvent)
+	// lobbyRoomString, err := DtoToString(LobbyRoomDTO{addRoomDTO.Name, addRoomDTO.Private, 1})
+	// if err != nil {
+	// 	log.Println("AddRoom: Couldn't marshal.", err)
+	// 	return
+	// }
+	// addRoomClientEvent := ClientEvent{constants.Config.RoomAdd, lobbyRoomString}
+	// sendEventToLobby(&addRoomClientEvent)
 
 	joinRoomString, err := DtoToString(JoinRoomDTO{addRoomDTO.Name})
 	if err != nil {
@@ -243,8 +244,8 @@ func RemoveRoom(removeRoomMessage string) {
 
 	delete(roomMap, removeRoomDTO.Name)
 
-	clientEvent := ClientEvent{constants.Config.RoomRemove, removeRoomMessage}
-	sendEventToLobby(&clientEvent)
+	//clientEvent := ClientEvent{constants.Config.RoomRemove, removeRoomMessage}
+	//sendEventToLobby(&clientEvent)
 	log.Println("-RemoveRoom")
 }
 
@@ -525,13 +526,13 @@ func RemoveFromObservers(user *User) {
 	}
 }
 
-func sendEventToLobby(clientEvent *ClientEvent) {
-	for _, user := range userMap {
-		if user.Room == nil && user.Active {
-			user.Events <- clientEvent
-		}
-	}
-}
+// func sendEventToLobby(clientEvent *ClientEvent) {
+// 	for _, user := range userMap {
+// 		if user.Room == nil && user.Active {
+// 			user.Events <- clientEvent
+// 		}
+// 	}
+// }
 
 func sendEventToRoom(clientEvent *ClientEvent, room *Room) {
 	if room.PlayerOne != nil && room.PlayerOne.Active {
