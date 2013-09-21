@@ -1,13 +1,28 @@
 package realtime
 
 import (
-	"github.com/garyburd/redigo/redis"
+	"log"
+	"menteslibres.net/gosexy/redis"
 )
 
-func ConnectRedis() redis.Conn {
-	redisConn, err := redis.Dial("tcp", ":6379")
+var (
+	client *redis.Client
+)
+
+func ConnectRedis() *redis.Client {
+	client := redis.New()
+	err := client.Connect("bclymer.com", 6379)
 	if err != nil {
-		panic(err)
+		log.Fatalln("Connect to Redis:", err)
 	}
-	return redisConn
+	return client
+}
+
+func RedisPut(key, value string) {
+	client.Set(key, value)
+	client.Expire(key, 10)
+}
+
+func RedisGet(key string) (string, error) {
+	return client.Get(key)
 }

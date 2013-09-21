@@ -108,20 +108,29 @@ func rooms(w http.ResponseWriter, r *http.Request) {
 
 func users(w http.ResponseWriter, r *http.Request) {
 	log.Println("main.users")
-	userMap := realtime.GetUserMap()
-	userList := make([]realtime.LobbyUserDTO, len(*userMap))
-	i := 0
-	for _, user := range *userMap {
-		roomName := ""
-		if user.Room != nil {
-			roomName = user.Room.Name
+	var serializedUsers string
+	serializedUsers, err := realtime.RedisGet("users")
+	if err != nil {
+		log.Println("Cache Miss", err)
+		userMap := realtime.GetUserMap()
+		userList := make([]realtime.LobbyUserDTO, len(*userMap))
+		i := 0
+		for _, user := range *userMap {
+			roomName := ""
+			if user.Room != nil {
+				roomName = user.Room.Name
+			}
+			userList[i] = realtime.LobbyUserDTO{user.Username, roomName}
+			i = i + 1
 		}
-		userList[i] = realtime.LobbyUserDTO{user.Username, roomName}
-		i = i + 1
+		serializedUsersByteArray, _ := json.Marshal(userList)
+		serializedUsers = string(serializedUsersByteArray)
+		realtime.RedisPut("users", serializedUsers)
+	} else {
+		log.Println("Cache Hit")
 	}
-	serializedUsers, _ := json.Marshal(userList)
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprint(w, string(serializedUsers))
+	fmt.Fprint(w, serializedUsers)
 }
 
 type config struct {
@@ -175,7 +184,7 @@ func main() {
 	}
 
 	redis := realtime.ConnectRedis()
-	defer redis.Close()
+	defer redis.Quit()
 
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/validate", validateUsername)
