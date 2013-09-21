@@ -10,7 +10,7 @@ var (
 )
 
 func ConnectRedis() *redis.Client {
-	client := redis.New()
+	client = redis.New()
 	err := client.Connect("bclymer.com", 6379)
 	if err != nil {
 		log.Fatalln("Connect to Redis:", err)
