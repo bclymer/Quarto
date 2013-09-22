@@ -10,12 +10,13 @@
 			loaded = true;
 			console.log("waitingRoom start()");
 			$('#waiting-room').show();
+			$('#profile-dropdown').text(Quarto.socket().getUsername());
 			$.get("/users", function (data) {
 				console.log(data);
 				var usersTable = $('#users-table');
 				$('#users-table .non-head').remove();
 				$(data).each(function (index, user) {
-					if ($('#users-table [data-user-name="' + user.Username + '"]').length > 0) return;
+					if ($('#users-table [data-user-name="' + user.username + '"]').length > 0) return;
 
 					usersTable.append(userRowTemplate(user));
 				});
@@ -25,7 +26,7 @@
 				var roomsTable = $('#rooms-table');
 				$('#rooms-table .non-head').remove();
 				$(data).each(function (index, room) {
-					if ($('#rooms-table [data-room-name="' + room.Name + '"]').length > 0) return;
+					if ($('#rooms-table [data-room-name="' + room.name + '"]').length > 0) return;
 
 					roomsTable.append(roomRowTemplate(room));
 				});
@@ -64,9 +65,9 @@
 				$('#create-new-room').removeClass('disabled');
 
 				var room = JSON.stringify({
-					Name: $('#new-room-name').val(),
-					Private: false,
-					Password: ""
+					name: $('#new-room-name').val(),
+					private: false,
+					password: ""
 				});
 				$('#new-room-name').val("");
 				Quarto.socket().sendMessage(Quarto.constants.RoomAdd, room);
@@ -78,43 +79,43 @@
 			});
 
 			$(document).on(Quarto.constants.RoomAdd, function(event, room) {
-				if ($('#rooms-table [data-room-name="' + room.Name + '"]').length > 0) return;
+				if ($('#rooms-table [data-room-name="' + room.name + '"]').length > 0) return;
 
 				$('#rooms-table').append(roomRowTemplate(room));
 			});
 
 			$(document).on(Quarto.constants.RoomChange, function(event, room) {
-				var changedRow = $('#rooms-table [data-room-name="' + room.Name + '"]');
+				var changedRow = $('#rooms-table [data-room-name="' + room.name + '"]');
 				var cells = changedRow.find('td');
-				$(cells[0]).text(room.Name);
-				$(cells[1]).text(room.Members);
-				$(cells[2]).text(room.Private ? "Yes" : "No");
-				$(cells[3]).html('<a href="#" class="join-room" data-room-name="' + room.Name + '">Join</a>');
+				$(cells[0]).text(room.name);
+				$(cells[1]).text(room.members);
+				$(cells[2]).text(room.private ? "Yes" : "No");
+				$(cells[3]).html('<a href="#" class="join-room" data-room-name="' + room.name + '">Join</a>');
 			});
 
 			$(document).on(Quarto.constants.RoomRemove, function(event, room) {
-				var changedRow = $('#rooms-table [data-room-name="' + room.Name + '"]');
+				var changedRow = $('#rooms-table [data-room-name="' + room.name + '"]');
 				changedRow.slideUp(function() {
 					changedRow.remove();
 				});
 			});
 
 			$(document).on(Quarto.constants.UserRoomJoin, function(event, userRoom) {
-				var changedRow = $('#users-table [data-user-name="' + userRoom.Username + '"]');
-				$(changedRow.find('td')[2]).html(userRoom.RoomName);
+				var changedRow = $('#users-table [data-user-name="' + userRoom.username + '"]');
+				$(changedRow.find('td')[2]).html(userRoom.roomName);
 		        changedRow.animate({backgroundColor: "#dd0000"}, 500, function () {
 		        	changedRow.animate({backgroundColor: ""}, 500)
 		        });
 			});
 
 			$(document).on(Quarto.constants.UserAdd, function(event, user) {
-				if ($('#users-table [data-user-name="' + user.Username + '"]').length > 0) return;
+				if ($('#users-table [data-user-name="' + user.username + '"]').length > 0) return;
 
 				$('#users-table').append(userRowTemplate(user));
 			});
 
 			$(document).on(Quarto.constants.UserRemove, function(event, user) {
-				var changedRow = $('#users-table [data-user-name="' + user.Username + '"]');
+				var changedRow = $('#users-table [data-user-name="' + user.username + '"]');
 				changedRow.find('div').slideUp(function() {
 					changedRow.remove();
 				});

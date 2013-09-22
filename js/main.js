@@ -19,11 +19,11 @@
 	});
 
 	$(document).on(Quarto.constants.Info, function (event, data) {
-		toastr.info(data.Message);
+		toastr.info(data.message);
 	});
 
 	$(document).on(Quarto.constants.Error, function (event, data) {
-		toastr.error(data.Message);
+		toastr.error(data.message);
 	});
 
 	Quarto.main = (function() {

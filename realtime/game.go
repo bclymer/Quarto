@@ -5,11 +5,11 @@ import (
 )
 
 type Game struct {
-	GameState       int
-	UsedPieces      []int
-	AvailablePieces []int
-	Board           []int
-	SelectedPiece   int
+	GameState       int   `json:"gameState"`
+	UsedPieces      []int `json:"usedPieces"`
+	AvailablePieces []int `json:"availablePieces"`
+	Board           []int `json:"board"`
+	SelectedPiece   int   `json:"selectedPiece"`
 }
 
 type Piece struct {

@@ -77,14 +77,14 @@
             }
 
             $(document).on(Quarto.constants.GameChange, function (event, data) {
-                gameState = data.GameState;
+                gameState = data.gameState;
                 if (gameState == gameStateNoPlayers) {
                     resetState();
                 }
-                availablePieces = data.AvailablePieces;
-                usedPieces = data.UsedPieces;
-                boardLocations = data.Board;
-                selectedPiece = data.SelectedPiece;
+                availablePieces = data.availablePieces;
+                usedPieces = data.usedPieces;
+                boardLocations = data.board;
+                selectedPiece = data.selectedPiece;
                 _.each(boardLocations, function (piece, index) {
                     if (piece != -1) {
                         var location = getLocationXandY(index);

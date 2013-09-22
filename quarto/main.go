@@ -15,17 +15,8 @@ import (
 	"text/template"
 )
 
-type Page struct {
-	Title string
-	Body  []byte
-}
-
-type GeneratedUuid struct {
-	Uuid string
-}
-
 type Success struct {
-	Valid bool
+	Valid bool `json:"valid"`
 }
 
 func realtimeHost(ws *websocket.Conn) {
@@ -113,17 +104,7 @@ func users(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Cache Miss", err)
 		userMap := realtime.GetUserMap()
-		userList := make([]realtime.LobbyUserDTO, len(*userMap))
-		i := 0
-		for _, user := range *userMap {
-			roomName := ""
-			if user.Room != nil {
-				roomName = user.Room.Name
-			}
-			userList[i] = realtime.LobbyUserDTO{user.Username, roomName}
-			i = i + 1
-		}
-		serializedUsersByteArray, _ := json.Marshal(userList)
+		serializedUsersByteArray, _ := json.Marshal(userMap)
 		serializedUsers = string(serializedUsersByteArray)
 		realtime.RedisPut("users", serializedUsers)
 	} else {
@@ -169,8 +150,10 @@ const configJsConst = `(function () {
 var oauthCfg = &oauth.Config{}
 
 func main() {
+	log.Println("Connecting to Mongo")
 	session := realtime.ConnectMongo()
 	defer session.Close()
+	log.Println("Mongo - Success")
 
 	mongoOauth := realtime.FetchOauth()
 	oauthCfg = &oauth.Config{
@@ -183,8 +166,10 @@ func main() {
 		TokenCache:   oauth.CacheFile("cache.json"),
 	}
 
+	log.Println("Connecting to Redis")
 	redis := realtime.ConnectRedis()
 	defer redis.Quit()
+	log.Println("Redis - Success")
 
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/validate", validateUsername)
@@ -201,6 +186,7 @@ func main() {
 	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("../css"))))
 	http.Handle("/views/", http.StripPrefix("/views/", http.FileServer(http.Dir("../views"))))
 	http.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(http.Dir("../fonts"))))
+	log.Println("Quarto is running...")
 	http.ListenAndServe(":8080", nil)
 }
 

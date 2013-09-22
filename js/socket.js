@@ -14,11 +14,11 @@
 					return;
 				}
 				var message = JSON.parse(event.data);
-				if (!message.Data) {
+				if (!message.data) {
 					return;
 				}
-				data = JSON.parse(message.Data);
-				$(document).trigger(message.Action, data);
+				data = JSON.parse(message.data);
+				$(document).trigger(message.action, data);
 			};
 			socket.onopen = onOpen();
 			socket.onclose = function () {
@@ -32,8 +32,8 @@
 
 		function sendMessage(action, message) {
 			var serializedMessage = JSON.stringify({
-				Action: action,
-				Data: message
+				action: action,
+				data: message
 			});
 			console.log("Out: " + serializedMessage);
 			socket.send(serializedMessage);

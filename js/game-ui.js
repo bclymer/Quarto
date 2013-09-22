@@ -21,36 +21,36 @@
 			observers = $('#observers');
 
             $(document).on(Quarto.constants.RoomChange, function (event, data) {
-                roomName.text(data.Name);
-                if (!data.PlayerOne) {
+                roomName.text(data.name);
+                if (!data.playerOne) {
                 	playerOne.html('<button type="button" class="btn btn-primary" id="request-player-one">Dibs!</button>');
-                } else if (data.PlayerOne == Quarto.socket().getUsername()) {
+                } else if (data.playerOne == Quarto.socket().getUsername()) {
                 	playerOne.html('<button type="button" class="btn btn-danger" id="leave-player-one">You, Leave?</button>')
                 } else {
-                	playerOne.html('<span class="label label-default">' + _.escape(data.PlayerOne) + '</span>');
+                	playerOne.html('<span class="label label-default">' + _.escape(data.playerOne) + '</span>');
                 }
-                if (!data.PlayerTwo) {
+                if (!data.playerTwo) {
                 	playerTwo.html('<button type="button" class="btn btn-primary" id="request-player-two">Dibs!</button>');
-                } else if (data.PlayerTwo == Quarto.socket().getUsername()) {
+                } else if (data.playerTwo == Quarto.socket().getUsername()) {
                 	playerTwo.html('<button type="button" class="btn btn-danger" id="leave-player-two">You, Leave?</button>')
                 } else {
-                	playerTwo.html('<span class="label label-default">' + _.escape(data.PlayerTwo) + '</span>');
+                	playerTwo.html('<span class="label label-default">' + _.escape(data.playerTwo) + '</span>');
                 }
-                $('#privacy').text(data.Private ? "Private" : "Public");
+                $('#privacy').text(data.private ? "Private" : "Public");
                 observers.empty();
-                $(data.Observers).each(function(index, observer) {
+                $(data.observers).each(function(index, observer) {
                 	observers.append('<li><span class="label label-default">' + _.escape(observer) + '</span></li>')
                 });
             });
 
 			$(document).on(Quarto.constants.GameWinner, function (event, data) {
-				$('#dialog-message').text(data.Winner + " won!");
+				$('#dialog-message').text(data.winner + " won!");
 				$('#popup').bPopup();
 			});
 
 			$(document).on(Quarto.constants.GameChange, function (event, data) {
 				var gameStateText;
-            	switch(data.GameState) {
+            	switch(data.gameState) {
             		case 0:
             			gameStateText = "Waiting for players";
             			break;

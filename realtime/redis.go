@@ -5,6 +5,10 @@ import (
 	"menteslibres.net/gosexy/redis"
 )
 
+const (
+	cacheTime = 5
+)
+
 var (
 	client *redis.Client
 )
@@ -20,7 +24,7 @@ func ConnectRedis() *redis.Client {
 
 func RedisPut(key, value string) {
 	client.Set(key, value)
-	client.Expire(key, 10)
+	client.Expire(key, cacheTime)
 }
 
 func RedisGet(key string) (string, error) {

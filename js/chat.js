@@ -18,7 +18,7 @@
 
 			sendButton.on('click', function () {
 				var chatData = JSON.stringify({
-					Message: chatInput.val()
+					message: chatInput.val()
 				});
 				Quarto.socket().sendMessage(Quarto.constants.Chat, chatData);
 				scrollChatToBottom();
@@ -63,9 +63,9 @@
 			$(document).on(Quarto.constants.UserRoomJoin, function (event, data) {
 				if (!chatDiv) return;
 				var message = {
-					Sender: "opponent",
-					Username: "System",
-					Message: data.Username + " joined the room."
+					sender: "opponent",
+					username: "System",
+					message: data.username + " joined the room."
 				}
 				chatDiv.append(chatTemplate(message));
 			});
@@ -73,9 +73,9 @@
 			$(document).on(Quarto.constants.UserRoomLeave, function (event, data) {
 				if (!chatDiv) return;
 				var message = {
-					Sender: "opponent",
-					Username: "System",
-					Message: data.Username + " left the room."
+					sender: "opponent",
+					username: "System",
+					message: data.username + " left the room."
 				}
 				chatDiv.append(chatTemplate(message));
 			});
@@ -112,7 +112,7 @@
 
 	function applyMessage(data) {
 		if (!chatDiv) return;
-		data.Sender = (data.Username == Quarto.socket().getUsername()) ? "you" : "opponent";
+		data.sender = (data.username == Quarto.socket().getUsername()) ? "you" : "opponent";
 		chatDiv.append(chatTemplate(data));
 		scrollChatToBottom();
 	}

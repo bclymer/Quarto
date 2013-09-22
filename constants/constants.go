@@ -1,10 +1,15 @@
 package constants
 
+import (
+	"log"
+)
+
 var (
 	Config ConfigContainer
 )
 
 func Init() {
+	log.Println("Initing Constant Values")
 	Config = ConfigContainer{
 		"com.bclymer.quarto.user.add",
 		"com.bclymer.quarto.user.remove",

@@ -33,7 +33,7 @@
 			$('#submit-username').on("click", function() {
 				$.get("validate?username=" + username.val(),
 					function(data) {
-						if (data.Valid) {
+						if (data.valid) {
 							Quarto.socket().makeConnection(username.val(), function() {
 								Quarto.main().loadWaitingRoomHTML();
 							});
