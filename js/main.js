@@ -10,6 +10,7 @@
             "timeOut": 2000,
             "extendedTimeOut": 1000
         }
+        $('#build-info').html(Quarto.info)
 	});
 
 	$(document).on(Quarto.constants.Info, function (event, data) {

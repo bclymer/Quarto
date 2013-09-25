@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os/exec"
 	"quarto/constants"
 	"quarto/realtime"
 	"strings"
@@ -123,11 +124,28 @@ func configJs(w http.ResponseWriter, r *http.Request) {
 	constants.Init()
 	constantsStr, _ := json.Marshal(constants.Config)
 	w.Header().Set("Content-Type", "text/javascript")
-	fmt.Fprint(w, strings.Replace(conficJs, "{{Config}}", string(constantsStr), -1))
+
+	app := "/usr/bin/git"
+	arg0 := "log"
+	arg1 := "--pretty=format:'%ad<br />%h %d'"
+	arg2 := "--abbrev-commit"
+	arg3 := "--date=short"
+	arg4 := "-1"
+
+	cmd := exec.Command(app, arg0, arg1, arg2, arg3, arg4)
+	out, err := cmd.Output()
+
+	if err != nil {
+		println(err.Error())
+	}
+
+	configReplaced := strings.Replace(conficJs, "{{Config}}", string(constantsStr), -1)
+	fmt.Fprint(w, strings.Replace(configReplaced, "{{Info}}", string(out), -1))
 }
 
 const conficJs = `(function () {
 	Quarto.constants = {{Config}};
+	Quarto.info = {{Info}};
 })();
 `
 
