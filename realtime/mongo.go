@@ -1,7 +1,9 @@
 package realtime
 
 import (
+	"encoding/json"
 	"github.com/nu7hatch/gouuid"
+	"io/ioutil"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"log"
@@ -36,12 +38,27 @@ type OAuthConstants struct {
 	Scope        string `bson:"s"`
 }
 
+type MongoAuth struct {
+	User     string `json:"user"`
+	Password string `json:"password"`
+	Database string `json:"database"`
+}
+
 func NewMongoUser(username string) *MongoUser {
 	return &MongoUser{bson.NewObjectId(), username, "", make([]MongoGame, 0)}
 }
 
 func ConnectMongo() *mgo.Session {
-	session, err := mgo.Dial("bclymer.com")
+	var mongoAuth MongoAuth
+	content, err := ioutil.ReadFile("../realtime/mongoAuth.json")
+	if err != nil {
+		panic(err)
+	}
+	err = json.Unmarshal(content, &mongoAuth)
+	if err != nil {
+		panic(err)
+	}
+	session, err := mgo.Dial("mongodb://" + mongoAuth.User + ":" + mongoAuth.Password + "@bclymer.com/" + mongoAuth.Database)
 	if err != nil {
 		panic(err)
 	}

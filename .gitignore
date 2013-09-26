@@ -15,6 +15,7 @@ local.properties
 .classpath
 .settings/
 .loadpath
+realtime/mongoAuth.json
 
 # External tool builders
 .externalToolBuilders/
