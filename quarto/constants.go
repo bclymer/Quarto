@@ -1,4 +1,4 @@
-package constants
+package quarto
 
 import (
 	"log"
@@ -8,7 +8,7 @@ var (
 	Config ConfigContainer
 )
 
-func Init() {
+func InitConstants() {
 	log.Println("Initing Constant Values")
 	Config = ConfigContainer{
 		"com.bclymer.quarto.user.add",

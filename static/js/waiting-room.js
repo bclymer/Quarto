@@ -11,7 +11,7 @@
 			console.log("waitingRoom start()");
 			$('#waiting-room').show();
 			$('#profile-dropdown').text(Quarto.socket().getUsername());
-			$.get("/users", function (data) {
+			$.get("/quarto/users", function (data) {
 				console.log(data);
 				var usersTable = $('#users-table');
 				$('#users-table .non-head').remove();
@@ -21,7 +21,7 @@
 					usersTable.append(userRowTemplate(user));
 				});
 			}, "json");
-			$.get("/rooms", function (data) {
+			$.get("/quarto/rooms", function (data) {
 				console.log(data);
 				var roomsTable = $('#rooms-table');
 				$('#rooms-table .non-head').remove();

@@ -1,4 +1,4 @@
-package realtime
+package quarto
 
 import (
 	"encoding/json"
@@ -21,7 +21,7 @@ type RedisAuth struct {
 
 func ConnectRedis() *redis.Client {
 	var redisAuth RedisAuth
-	content, err := ioutil.ReadFile("../realtime/redisAuth.json")
+	content, err := ioutil.ReadFile("quarto/redisAuth.json")
 	if err != nil {
 		panic(err)
 	}

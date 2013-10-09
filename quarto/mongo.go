@@ -1,4 +1,4 @@
-package realtime
+package quarto
 
 import (
 	"encoding/json"
@@ -10,9 +10,9 @@ import (
 )
 
 var (
-	session  *mgo.Session
-	database *mgo.Database
-	users    *mgo.Collection
+	session        *mgo.Session
+	database       *mgo.Database
+	userCollection *mgo.Collection
 )
 
 type MongoUser struct {
@@ -50,7 +50,7 @@ func NewMongoUser(username string) *MongoUser {
 
 func ConnectMongo() *mgo.Session {
 	var mongoAuth MongoAuth
-	content, err := ioutil.ReadFile("../realtime/mongoAuth.json")
+	content, err := ioutil.ReadFile("quarto/mongoAuth.json")
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +63,7 @@ func ConnectMongo() *mgo.Session {
 		panic(err)
 	}
 	database = session.DB("quarto")
-	users = database.C("users")
+	userCollection = database.C("users")
 	return session
 }
 
@@ -78,7 +78,7 @@ func InsertUser(mongoUser *MongoUser) *MongoUser {
 		mongoUser.Token = generateToken()
 	}
 	log.Println(mongoUser.Id)
-	_, err := users.UpsertId(mongoUser.Id, &mongoUser)
+	_, err := userCollection.UpsertId(mongoUser.Id, &mongoUser)
 	if err != nil {
 		log.Println(err)
 	}
@@ -87,7 +87,7 @@ func InsertUser(mongoUser *MongoUser) *MongoUser {
 
 func FindUser(token string) *MongoUser {
 	mongoUser := MongoUser{}
-	users.Find(bson.M{"t": token}).One(&mongoUser)
+	userCollection.Find(bson.M{"t": token}).One(&mongoUser)
 	return &mongoUser
 }
 

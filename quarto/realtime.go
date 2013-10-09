@@ -1,9 +1,8 @@
-package realtime
+package quarto
 
 import (
 	"encoding/json"
 	"log"
-	"quarto/constants"
 	"strings"
 )
 
@@ -29,7 +28,7 @@ func (user *User) Cancel() {
 	if err != nil {
 		log.Fatal("Cancel: Couldn't marshal the thing", err)
 	}
-	clientEvent := ClientEvent{constants.Config.UserRemove, string(removeUserDTO)}
+	clientEvent := ClientEvent{Config.UserRemove, string(removeUserDTO)}
 	recievedEvent := RecievedEvent{clientEvent, user.Username}
 	user.Active = false
 	recievedEventChannel <- &recievedEvent
@@ -82,8 +81,8 @@ func ValidateUsername(name string) (bool, string) {
 	log.Println("-realtime.ValidateUsername")
 	valid := <-check.Valid
 	if valid {
-		mongoUser := InsertUser(NewMongoUser(name))
-		return true, mongoUser.Token
+		//mongoUser := InsertUser(NewMongoUser(name))
+		return true, "" //mongoUser.Token
 	} else {
 		return false, ""
 	}
@@ -114,35 +113,35 @@ func realtime() {
 			clientEvent := recievedEvent.clientEvent
 			username := recievedEvent.Username
 			switch clientEvent.Action {
-			case constants.Config.UserRemove:
+			case Config.UserRemove:
 				RemoveUser(clientEvent.Data)
-			case constants.Config.UserChallenge:
+			case Config.UserChallenge:
 				UserChallengedUser(clientEvent.Data, username)
-			case constants.Config.UserRoomJoin:
+			case Config.UserRoomJoin:
 				JoinRoom(clientEvent.Data, username)
-			case constants.Config.UserRoomLeave:
+			case Config.UserRoomLeave:
 				LeaveRoom(username)
-			case constants.Config.RoomAdd:
+			case Config.RoomAdd:
 				AddRoom(clientEvent.Data, username)
-			case constants.Config.RoomRemove:
+			case Config.RoomRemove:
 				RemoveRoom(clientEvent.Data)
-			case constants.Config.RoomNameChange:
+			case Config.RoomNameChange:
 				RoomNameChange(clientEvent.Data)
-			case constants.Config.RoomPrivacyChange:
+			case Config.RoomPrivacyChange:
 				RoomNameChange(clientEvent.Data)
-			case constants.Config.Chat:
+			case Config.Chat:
 				Chat(clientEvent.Data, username)
-			case constants.Config.GamePlayerOneRequest:
+			case Config.GamePlayerOneRequest:
 				RequestPlayerOne(username)
-			case constants.Config.GamePlayerTwoRequest:
+			case Config.GamePlayerTwoRequest:
 				RequestPlayerTwo(username)
-			case constants.Config.GamePlayerOneLeave:
+			case Config.GamePlayerOneLeave:
 				LeavePlayerOne(username)
-			case constants.Config.GamePlayerTwoLeave:
+			case Config.GamePlayerTwoLeave:
 				LeavePlayerTwo(username)
-			case constants.Config.GamePiecePlayed:
+			case Config.GamePiecePlayed:
 				GamePiecePlayed(clientEvent.Data, username)
-			case constants.Config.GamePieceChosen:
+			case Config.GamePieceChosen:
 				GamePieceChosen(clientEvent.Data, username)
 			}
 			log.Println("-recievedEventChannel")

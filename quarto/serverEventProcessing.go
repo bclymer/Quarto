@@ -1,10 +1,9 @@
-package realtime
+package quarto
 
 import (
 	"container/list"
 	"encoding/json"
 	"log"
-	"quarto/constants"
 	"strings"
 )
 
@@ -34,7 +33,7 @@ func AddUser(addUserMessage string) *User {
 
 	userMap[addUserDTO.Username] = &user
 
-	//clientEvent := ClientEvent{constants.Config.UserAdd, addUserMessage}
+	//clientEvent := ClientEvent{Config.UserAdd, addUserMessage}
 
 	//sendEventToLobby(&clientEvent)
 	log.Println("-AddUser")
@@ -61,7 +60,7 @@ func RemoveUser(removeUserMessage string) {
 	}
 	delete(userMap, removeUserDTO.Username)
 
-	//clientEvent := ClientEvent{constants.Config.UserRemove, removeUserMessage}
+	//clientEvent := ClientEvent{Config.UserRemove, removeUserMessage}
 	//sendEventToLobby(&clientEvent)
 	close(user.Events)
 	log.Println("-RemoveUser")
@@ -94,7 +93,7 @@ func JoinRoom(joinRoomMessage, username string) {
 	// 	return
 	// }
 
-	// lobbyUserEvent := ClientEvent{constants.Config.UserRoomJoin, userRoomString}
+	// lobbyUserEvent := ClientEvent{Config.UserRoomJoin, userRoomString}
 	// sendEventToLobby(&lobbyUserEvent)
 
 	// lobbyRoomString, err := DtoToString(MakeLobbyRoomDTO(room))
@@ -102,7 +101,7 @@ func JoinRoom(joinRoomMessage, username string) {
 	// 	log.Println("JoinRoom: Couldn't marshal.", err)
 	// 	return
 	// }
-	// lobbyRoomEvent := ClientEvent{constants.Config.RoomChange, lobbyRoomString}
+	// lobbyRoomEvent := ClientEvent{Config.RoomChange, lobbyRoomString}
 	// sendEventToLobby(&lobbyRoomEvent)
 
 	roomRoomString, err := DtoToString(MakeRoomRoomDTO(room))
@@ -110,7 +109,7 @@ func JoinRoom(joinRoomMessage, username string) {
 		log.Println("JoinRoom: Couldn't marshal.", err)
 		return
 	}
-	roomRoomEvent := ClientEvent{constants.Config.RoomChange, roomRoomString}
+	roomRoomEvent := ClientEvent{Config.RoomChange, roomRoomString}
 	sendEventToRoom(&roomRoomEvent, room)
 	sendInfoToUser(user, "You've been added as an observer to the room "+room.Name)
 	log.Println("-JoinRoom")
@@ -124,7 +123,7 @@ func JoinRoom(joinRoomMessage, username string) {
 		log.Println("updateGameForRoom: Couldn't marshal.", err)
 		return
 	}
-	clientEvent := ClientEvent{constants.Config.GameChange, gameString}
+	clientEvent := ClientEvent{Config.GameChange, gameString}
 	sendEventToUser(&clientEvent, user)
 }
 
@@ -157,7 +156,7 @@ func LeaveRoom(username string) {
 			log.Println("LeaveRoom: Couldn't marshal.", err)
 			return
 		}
-		clientEvent := ClientEvent{constants.Config.RoomChange, roomRoomString}
+		clientEvent := ClientEvent{Config.RoomChange, roomRoomString}
 		sendEventToRoom(&clientEvent, room)
 		room.UpdateGame()
 		updateGameForRoom(room)
@@ -168,7 +167,7 @@ func LeaveRoom(username string) {
 		log.Println("LeaveRoom: Couldn't marshal.", err)
 		return
 	}
-	clientEvent := ClientEvent{constants.Config.UserRoomLeave, userRoomString}
+	clientEvent := ClientEvent{Config.UserRoomLeave, userRoomString}
 	//sendEventToLobby(&clientEvent)
 	sendEventToRoom(&clientEvent, room)
 
@@ -219,7 +218,7 @@ func AddRoom(addRoomMessage, username string) {
 	// 	log.Println("AddRoom: Couldn't marshal.", err)
 	// 	return
 	// }
-	// addRoomClientEvent := ClientEvent{constants.Config.RoomAdd, lobbyRoomString}
+	// addRoomClientEvent := ClientEvent{Config.RoomAdd, lobbyRoomString}
 	// sendEventToLobby(&addRoomClientEvent)
 
 	joinRoomString, err := DtoToString(JoinRoomDTO{addRoomDTO.Name})
@@ -244,7 +243,7 @@ func RemoveRoom(removeRoomMessage string) {
 
 	delete(roomMap, removeRoomDTO.Name)
 
-	//clientEvent := ClientEvent{constants.Config.RoomRemove, removeRoomMessage}
+	//clientEvent := ClientEvent{Config.RoomRemove, removeRoomMessage}
 	//sendEventToLobby(&clientEvent)
 	log.Println("-RemoveRoom")
 }
@@ -272,7 +271,7 @@ func Chat(incomingChat, username string) {
 		log.Println("LeaveRoom: Couldn't marshal.", err)
 		return
 	}
-	clientEvent := ClientEvent{constants.Config.Chat, outgoingChatString}
+	clientEvent := ClientEvent{Config.Chat, outgoingChatString}
 	sendEventToRoom(&clientEvent, room)
 	if room.Events.Len() >= 10 {
 		room.Events.Remove(room.Events.Front())
@@ -305,7 +304,7 @@ func RequestPlayerOne(username string) {
 		log.Println("RequestPlayerOne: Couldn't marshal.", err)
 		return
 	}
-	clientEvent := ClientEvent{constants.Config.RoomChange, roomRoomString}
+	clientEvent := ClientEvent{Config.RoomChange, roomRoomString}
 	user.Room.UpdateGame()
 	updateGameForRoom(user.Room)
 	sendEventToRoom(&clientEvent, user.Room)
@@ -335,7 +334,7 @@ func RequestPlayerTwo(username string) {
 		log.Println("RequestPlayerTwo: Couldn't marshal.", err)
 		return
 	}
-	clientEvent := ClientEvent{constants.Config.RoomChange, roomRoomString}
+	clientEvent := ClientEvent{Config.RoomChange, roomRoomString}
 	user.Room.UpdateGame()
 	updateGameForRoom(user.Room)
 	sendEventToRoom(&clientEvent, user.Room)
@@ -359,7 +358,7 @@ func LeavePlayerOne(username string) {
 		log.Println("LeavePlayerOne: Couldn't marshal.", err)
 		return
 	}
-	clientEvent := ClientEvent{constants.Config.RoomChange, roomRoomString}
+	clientEvent := ClientEvent{Config.RoomChange, roomRoomString}
 	user.Room.Game.Reset()
 	updateGameForRoom(user.Room)
 	sendEventToRoom(&clientEvent, user.Room)
@@ -383,7 +382,7 @@ func LeavePlayerTwo(username string) {
 		log.Println("LeavePlayerTwo: Couldn't marshal.", err)
 		return
 	}
-	clientEvent := ClientEvent{constants.Config.RoomChange, roomRoomString}
+	clientEvent := ClientEvent{Config.RoomChange, roomRoomString}
 	user.Room.Game.Reset()
 	updateGameForRoom(user.Room)
 	sendEventToRoom(&clientEvent, user.Room)
@@ -444,7 +443,7 @@ func GamePiecePlayed(gamePiecePlayed, username string) {
 		if err != nil {
 			log.Println("GamePiecePlayed: Couldn't marshal.", err)
 		}
-		clientEvent := ClientEvent{constants.Config.GameWinner, gameWinnerString}
+		clientEvent := ClientEvent{Config.GameWinner, gameWinnerString}
 		sendEventToRoom(&clientEvent, user.Room)
 		user.Room.Game.Reset()
 	}
@@ -509,7 +508,7 @@ func updateGameForRoom(room *Room) {
 		log.Println("updateGameForRoom: Couldn't marshal.", err)
 		return
 	}
-	clientEvent := ClientEvent{constants.Config.GameChange, gameString}
+	clientEvent := ClientEvent{Config.GameChange, gameString}
 	sendEventToRoom(&clientEvent, room)
 }
 
@@ -563,7 +562,7 @@ func sendInfoToUser(user *User, message string) {
 		log.Println("sendErrorToUser: Couldn't marshal.", err)
 		return
 	}
-	clientEvent := ClientEvent{constants.Config.Info, messageEvent}
+	clientEvent := ClientEvent{Config.Info, messageEvent}
 	sendEventToUser(&clientEvent, user)
 }
 
@@ -576,7 +575,7 @@ func sendErrorToUser(user *User, message string) {
 		log.Println("sendErrorToUser: Couldn't marshal.", err)
 		return
 	}
-	clientEvent := ClientEvent{constants.Config.Error, messageEvent}
+	clientEvent := ClientEvent{Config.Error, messageEvent}
 	sendEventToUser(&clientEvent, user)
 }
 

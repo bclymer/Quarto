@@ -1,6 +1,7 @@
-package main
+package quarto
 
 import (
+	"bclymer/quarto/quarto"
 	"code.google.com/p/go.net/websocket"
 	"code.google.com/p/goauth2/oauth"
 	"crypto/tls"
@@ -9,8 +10,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"quarto/constants"
-	"quarto/realtime"
 	"strings"
 	"text/template"
 )
@@ -22,7 +21,7 @@ type Success struct {
 func realtimeHost(ws *websocket.Conn) {
 	username := ws.Request().URL.Query().Get("username")
 
-	user := realtime.Subscribe(username)
+	user := quarto.Subscribe(username)
 	if user == nil {
 		return
 	}
@@ -57,12 +56,12 @@ func realtimeHost(ws *websocket.Conn) {
 				return
 			}
 
-			var requestData realtime.ClientEvent
+			var requestData quarto.ClientEvent
 			json.Unmarshal([]byte(msg), &requestData)
 
 			log.Println("Recieved Message", requestData)
 
-			realtime.ServerSideAction(requestData, username)
+			quarto.ServerSideAction(requestData, username)
 		}
 	}
 	return
@@ -74,7 +73,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 func validateUsername(w http.ResponseWriter, r *http.Request) {
 	log.Println("main.validateUsername")
-	valid, token := realtime.ValidateUsername(r.FormValue("username"))
+	valid, token := quarto.ValidateUsername(r.FormValue("username"))
 	validDto := Success{Valid: valid}
 	response, _ := json.Marshal(validDto)
 	w.Header().Set("Content-Type", "application/json")
@@ -84,12 +83,12 @@ func validateUsername(w http.ResponseWriter, r *http.Request) {
 
 func rooms(w http.ResponseWriter, r *http.Request) {
 	log.Println("main.rooms")
-	roomMap := realtime.GetRoomMap()
-	roomList := make([]realtime.LobbyRoomDTO, len(*roomMap))
+	roomMap := quarto.GetRoomMap()
+	roomList := make([]quarto.LobbyRoomDTO, len(*roomMap))
 	i := 0
 	for _, room := range *roomMap {
-		members := realtime.GetRoomUserCount(room)
-		roomList[i] = realtime.LobbyRoomDTO{room.Name, room.Private, members}
+		members := quarto.GetRoomUserCount(room)
+		roomList[i] = quarto.LobbyRoomDTO{room.Name, room.Private, members}
 		i++
 	}
 	serializedRooms, _ := json.Marshal(roomList)
@@ -100,13 +99,13 @@ func rooms(w http.ResponseWriter, r *http.Request) {
 func users(w http.ResponseWriter, r *http.Request) {
 	log.Println("main.users")
 	var serializedUsers string
-	serializedUsers, err := realtime.RedisGet("users")
+	serializedUsers, err := quarto.RedisGet("users")
 	if err != nil {
 		log.Println("Cache Miss", err)
-		userMap := realtime.GetUserMap()
+		userMap := quarto.GetUserMap()
 		serializedUsersByteArray, _ := json.Marshal(userMap)
 		serializedUsers = string(serializedUsersByteArray)
-		realtime.RedisPut("users", serializedUsers)
+		quarto.RedisPut("users", serializedUsers)
 	} else {
 		log.Println("Cache Hit")
 	}
@@ -119,23 +118,22 @@ type config struct {
 }
 
 func configJs(w http.ResponseWriter, r *http.Request) {
-	constants.Init()
-	constantsStr, _ := json.Marshal(constants.Config)
+	constantsStr, _ := json.Marshal(quarto.Config)
 
 	jsResponse := configJsConst
 
-	cookie, err := r.Cookie("quarto")
-	if err == nil {
-		mongoUser := realtime.FindUser(cookie.Value)
-		if mongoUser.Username != "" {
-			jsResponse = strings.Replace(jsResponse, "{{Username}}", "\""+mongoUser.Username+"\"", -1)
-		} else {
-			jsResponse = strings.Replace(jsResponse, "{{Username}}", "undefined", -1)
-		}
-	} else {
-		log.Println(err)
-		jsResponse = strings.Replace(jsResponse, "{{Username}}", "undefined", -1)
-	}
+	// cookie, err := r.Cookie("quarto")
+	// if err == nil {
+	// 	mongoUser := FindUser(cookie.Value)
+	// 	if mongoUser.Username != "" {
+	// 		jsResponse = strings.Replace(jsResponse, "{{Username}}", "\""+mongoUser.Username+"\"", -1)
+	// 	} else {
+	// 		jsResponse = strings.Replace(jsResponse, "{{Username}}", "undefined", -1)
+	// 	}
+	// } else {
+	// 	log.Println(err)
+	jsResponse = strings.Replace(jsResponse, "{{Username}}", "undefined", -1)
+	// }
 
 	w.Header().Set("Content-Type", "text/javascript")
 	fmt.Fprint(w, strings.Replace(jsResponse, "{{Config}}", string(constantsStr), -1))
@@ -149,13 +147,14 @@ const configJsConst = `(function () {
 
 var oauthCfg = &oauth.Config{}
 
-func main() {
+func StartServer(urlPrefix string) {
+	quarto.InitConstants()
 	log.Println("Connecting to Mongo")
-	session := realtime.ConnectMongo()
-	defer session.Close()
+	mongo := quarto.ConnectMongo()
+	defer mongo.Close()
 	log.Println("Mongo - Success")
 
-	mongoOauth := realtime.FetchOauth()
+	mongoOauth := quarto.FetchOauth()
 	oauthCfg = &oauth.Config{
 		ClientId:     mongoOauth.ClientId,
 		ClientSecret: mongoOauth.ClientSecret,
@@ -167,27 +166,27 @@ func main() {
 	}
 
 	log.Println("Connecting to Redis")
-	redis := realtime.ConnectRedis()
+	redis := quarto.ConnectRedis()
 	defer redis.Quit()
 	log.Println("Redis - Success")
 
-	http.HandleFunc("/", handler)
-	http.HandleFunc("/validate", validateUsername)
-	http.HandleFunc("/rooms", rooms)
-	http.HandleFunc("/users", users)
-	http.HandleFunc("/js/constants.js", configJs)
+	if urlPrefix != "" {
+		urlPrefix = "/" + urlPrefix
+	}
+	http.HandleFunc(urlPrefix+"/", handler)
+	http.HandleFunc(urlPrefix+"/validate", validateUsername)
+	http.HandleFunc(urlPrefix+"/rooms", rooms)
+	http.HandleFunc(urlPrefix+"/users", users)
+	http.HandleFunc(urlPrefix+"/static/js/constants.js", configJs)
 
-	http.HandleFunc("/oauth2callback", handleOAuth2Callback)
-	http.HandleFunc("/authorize", handleAuthorize)
-	http.HandleFunc("/login", login)
+	http.HandleFunc(urlPrefix+"/oauth2callback", handleOAuth2Callback)
+	http.HandleFunc(urlPrefix+"/authorize", handleAuthorize)
+	http.HandleFunc(urlPrefix+"/login", login)
 
-	http.Handle("/realtime", websocket.Handler(realtimeHost))
-	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("../js"))))
-	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("../css"))))
-	http.Handle("/views/", http.StripPrefix("/views/", http.FileServer(http.Dir("../views"))))
-	http.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(http.Dir("../fonts"))))
+	http.Handle(urlPrefix+"/realtime", websocket.Handler(realtimeHost))
+
+	http.Handle(urlPrefix+"/static/", http.StripPrefix(urlPrefix+"/static", http.FileServer(http.Dir("quarto/static"))))
 	log.Println("Quarto is running...")
-	http.ListenAndServe(":8080", nil)
 }
 
 const profileInfoURL = "https://www.googleapis.com/oauth2/v1/userinfo"
