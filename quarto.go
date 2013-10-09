@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"menteslibres.net/gosexy/redis"
 	"net/http"
 	"strings"
 	"text/template"
@@ -147,7 +148,7 @@ const configJsConst = `(function () {
 
 var oauthCfg = &oauth.Config{}
 
-func StartServer(urlPrefix string) {
+func StartServer(urlPrefix string) *redis.Client {
 	quarto.InitConstants()
 	log.Println("Connecting to Mongo")
 	mongo := quarto.ConnectMongo()
@@ -167,7 +168,6 @@ func StartServer(urlPrefix string) {
 
 	log.Println("Connecting to Redis")
 	redis := quarto.ConnectRedis()
-	defer redis.Quit()
 	log.Println("Redis - Success")
 
 	if urlPrefix != "" {
@@ -187,6 +187,7 @@ func StartServer(urlPrefix string) {
 
 	http.Handle(urlPrefix+"/static/", http.StripPrefix(urlPrefix+"/static", http.FileServer(http.Dir("quarto/static"))))
 	log.Println("Quarto is running...")
+	return redis
 }
 
 const profileInfoURL = "https://www.googleapis.com/oauth2/v1/userinfo"
