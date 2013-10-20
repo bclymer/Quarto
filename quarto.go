@@ -69,7 +69,7 @@ func realtimeHost(ws *websocket.Conn) {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "../views/index.html")
+	http.ServeFile(w, r, "quarto/static/views/index.html")
 }
 
 func validateUsername(w http.ResponseWriter, r *http.Request) {
