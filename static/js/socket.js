@@ -7,7 +7,7 @@
 
 		function makeConnection(requestedUsername, onOpen) {
 			username = requestedUsername;
-			socket = new WebSocket('ws://' + window.location.host + '/quarto/realtime?username=' + username);
+			socket = new WebSocket('ws://' + window.location.host + '/realtime?username=' + username);
 			socket.onmessage = function (event) {
 				console.log("In: " + event.data);
 				if (!event.data) {

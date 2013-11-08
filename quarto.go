@@ -1,7 +1,6 @@
-package quarto
+package main
 
 import (
-	"bclymer/quarto/quarto"
 	"code.google.com/p/go.net/websocket"
 	"code.google.com/p/goauth2/oauth"
 	"crypto/tls"
@@ -11,6 +10,7 @@ import (
 	"log"
 	"menteslibres.net/gosexy/redis"
 	"net/http"
+	"quarto/quarto"
 	"strings"
 	"text/template"
 )
@@ -69,7 +69,7 @@ func realtimeHost(ws *websocket.Conn) {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "quarto/static/views/index.html")
+	http.ServeFile(w, r, "static/views/index.html")
 }
 
 func validateUsername(w http.ResponseWriter, r *http.Request) {
@@ -148,7 +148,7 @@ const configJsConst = `(function () {
 
 var oauthCfg = &oauth.Config{}
 
-func StartServer(urlPrefix string) *redis.Client {
+func main() {
 	quarto.InitConstants()
 	log.Println("Connecting to Mongo")
 	mongo := quarto.ConnectMongo()
@@ -168,26 +168,24 @@ func StartServer(urlPrefix string) *redis.Client {
 
 	log.Println("Connecting to Redis")
 	redis := quarto.ConnectRedis()
+	defer redis.Quit()
 	log.Println("Redis - Success")
 
-	if urlPrefix != "" {
-		urlPrefix = "/" + urlPrefix
-	}
-	http.HandleFunc(urlPrefix+"/", handler)
-	http.HandleFunc(urlPrefix+"/validate", validateUsername)
-	http.HandleFunc(urlPrefix+"/rooms", rooms)
-	http.HandleFunc(urlPrefix+"/users", users)
-	http.HandleFunc(urlPrefix+"/static/js/constants.js", configJs)
+	http.HandleFunc("/", handler)
+	http.HandleFunc("/validate", validateUsername)
+	http.HandleFunc("/rooms", rooms)
+	http.HandleFunc("/users", users)
+	http.HandleFunc("/static/js/constants.js", configJs)
 
-	http.HandleFunc(urlPrefix+"/oauth2callback", handleOAuth2Callback)
-	http.HandleFunc(urlPrefix+"/authorize", handleAuthorize)
-	http.HandleFunc(urlPrefix+"/login", login)
+	http.HandleFunc("/oauth2callback", handleOAuth2Callback)
+	http.HandleFunc("/authorize", handleAuthorize)
+	http.HandleFunc("/login", login)
 
-	http.Handle(urlPrefix+"/realtime", websocket.Handler(realtimeHost))
+	http.Handle("/realtime", websocket.Handler(realtimeHost))
 
-	http.Handle(urlPrefix+"/static/", http.StripPrefix(urlPrefix+"/static", http.FileServer(http.Dir("quarto/static"))))
+	http.Handle("/static/", http.StripPrefix("/static", http.FileServer(http.Dir("static"))))
 	log.Println("Quarto is running...")
-	return redis
+	http.ListenAndServe(":42127", nil)
 }
 
 const profileInfoURL = "https://www.googleapis.com/oauth2/v1/userinfo"
