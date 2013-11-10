@@ -50,7 +50,7 @@ func NewMongoUser(username string) *MongoUser {
 
 func ConnectMongo() *mgo.Session {
 	var mongoAuth MongoAuth
-	content, err := ioutil.ReadFile("quarto/mongoAuth.json")
+	content, err := ioutil.ReadFile("mongoAuth.json")
 	if err != nil {
 		panic(err)
 	}

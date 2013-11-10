@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"menteslibres.net/gosexy/redis"
 	"net/http"
 	"quarto/quarto"
 	"strings"

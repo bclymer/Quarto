@@ -21,7 +21,7 @@ type RedisAuth struct {
 
 func ConnectRedis() *redis.Client {
 	var redisAuth RedisAuth
-	content, err := ioutil.ReadFile("quarto/redisAuth.json")
+	content, err := ioutil.ReadFile("redisAuth.json")
 	if err != nil {
 		panic(err)
 	}
