@@ -8,8 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
-	"quarto/constants"
-	"quarto/realtime"
+	"github.com/bclymer/Quarto/constants"
+	"github.com/bclymer/Quarto/realtime"
 	"strings"
 )
 
