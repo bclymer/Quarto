@@ -4,7 +4,7 @@ import (
 	"container/list"
 	"encoding/json"
 	"log"
-	"quarto/constants"
+	"github.com/bclymer/Quarto/constants"
 )
 
 var (

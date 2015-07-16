@@ -3,7 +3,7 @@ package realtime
 import (
 	"encoding/json"
 	"log"
-	"quarto/constants"
+	"github.com/bclymer/Quarto/constants"
 )
 
 type NewUserInfoAndChannel struct {
