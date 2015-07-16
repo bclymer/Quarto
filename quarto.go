@@ -1,16 +1,17 @@
 package main
 
 import (
-	"code.google.com/p/go.net/websocket"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"os/exec"
+	"strings"
+
+	"code.google.com/p/go.net/websocket"
 	"github.com/bclymer/Quarto/constants"
 	"github.com/bclymer/Quarto/realtime"
-	"strings"
 )
 
 type Page struct {
@@ -71,7 +72,7 @@ func realtimeHost(ws *websocket.Conn) {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "../views/index.html")
+	http.ServeFile(w, r, "./views/index.html")
 }
 
 func validateUsername(w http.ResponseWriter, r *http.Request) {
@@ -162,9 +163,9 @@ func main() {
 	http.HandleFunc("/test", test)
 	http.HandleFunc("/js/constants.js", configJs)
 	http.Handle("/realtime", websocket.Handler(realtimeHost))
-	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("../js"))))
-	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("../css"))))
-	http.Handle("/views/", http.StripPrefix("/views/", http.FileServer(http.Dir("../views"))))
-	http.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(http.Dir("../fonts"))))
+	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("./js"))))
+	http.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("./css"))))
+	http.Handle("/views/", http.StripPrefix("/views/", http.FileServer(http.Dir("./views"))))
+	http.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(http.Dir("./fonts"))))
 	http.ListenAndServe(":8080", nil)
 }
